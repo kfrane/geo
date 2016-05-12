@@ -1,5 +1,4 @@
 from geohash import decode_uint64, encode_uint64
-import _geohash
 
 """ Undocumented stuff from geohash library
     Even indicies are latitude(y).

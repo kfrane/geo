@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/usr/share/tsung/tsung-1.0.dtd">
+<tsung loglevel="warning">
+  <clients>
+    <client host="localhost" cpu="1" maxusers="600"/>
+  </clients>
+  <servers>
+    <server host="geo.v8boinc.fer.hr" port="80" type="tcp"/>
+  </servers>
+  <load>
+    <arrivalphase phase="1" duration="25" unit="second">
+      <users arrivalrate="500" unit="second"/>
+    </arrivalphase>
+  </load>
+  <options>
+    <option name="file_server" id='tdrive_file' value="tdrive_sample.csv"/>
+  </options>
+  <sessions>
+    <session name="es_load" probability="100" type="ts_http">
+      <setdynvars sourcetype="file" fileid="tdrive_file" delimiter=";" order="iter">
+        <var name="json_data" />
+      </setdynvars>
+
+      <request subst="true">
+        <http url="/" method="POST"
+          content_type='application/json' contents='%%_json_data%%'/>
+      </request>
+    </session>
+  </sessions>
+</tsung>
