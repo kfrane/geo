@@ -1,8 +1,8 @@
 from geo_client import GeoClient
 import geohash_utils
 
-def car_member(car_id, x, y):
-    return 'car:{} {} {}'.format(car_id, x, y)
+def car_member(car_id):
+    return 'car:{}'.format(car_id)
 
 def parse_car_member(member):
     member_parts = member.split()
@@ -16,34 +16,29 @@ class SimpleGeoClient(GeoClient):
 
     def update(self, car_id, x, y):
         car_id_key = '{}:{}'.format(self.id_key, car_id)
-        old_position = self.redis.getset(car_id_key, '{} {}'.format(x, y))
-        old_x, old_y = old_position.split()
-
-        # TODO: These 2 can go in parallel.
-        self.redis.zrem(
-                self.geo_key,
-                car_member(car_id, old_x, old_y))
+        self.redis.set(car_id_key, '{} {}'.format(x, y))
         self.redis.zadd(
                 self.geo_key,
                 geohash_utils.score(x,y),
-                car_member(car_id, x, y))
+                car_member(car_id))
 
-    def prefix_find(self, key, score, prefix_len, limit=None):
+    def prefix_find(self, key, score, prefix_len, withscores=False, limit=None):
         max_score = geohash_utils.next_score(score, prefix_len)-1
         if limit is None:
             return self.redis.zrangebyscore(
-                    key, score, max_score)
+                    key, score, max_score, withscores=withscores)
         else:
             return self.redis.zrangebyscore(
-                    key, score, max_score, 0, limit)
+                    key, score, max_score, 0, limit, withscores=withscores)
 
-    def range_find(self, key, score_start, score_end, limit=None):
+    def range_find(
+            self, key, score_start, score_end, withscores=False, limit=None):
         if limit is None:
             return self.redis.zrangebyscore(
-                    key, score_start, score_end)
+                    key, score_start, score_end, withscores=withscores)
         else:
             return self.redis.zrangebyscore(
-                    key, score_start, score_end, 0, limit)
+                    key, score_start, score_end, 0, limit, withscores=withscores)
 
     """ Return list of car ids that are inside a given rectangle. """
     def query_rect(self, x_min, y_min, x_max, y_max):
@@ -51,11 +46,12 @@ class SimpleGeoClient(GeoClient):
         ret = set()
         for hash_range in hashes:
             car_members = self.range_find(
-                    self.geo_key, hash_range[0], hash_range[1])
-            for car_member in car_members:
-                car_id, x, y = parse_car_member(car_member)
+                    self.geo_key, hash_range[0], hash_range[1], True)
+            for car_member, car_score in car_members:
+                # Trebam score
+                x, y = geohash_utils.decode(int(car_score))
                 if x_min <= x <= x_max and y_min <= y <= y_max:
-                    ret.add((car_id, x, y))
+                    ret.add((car_member, x, y))
         return list(ret)
 
 

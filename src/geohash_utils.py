@@ -10,13 +10,20 @@ import _geohash
     highest bits in Redis."""
 BIT_COUNT = 52
 
-def score(lat, lng, precision=BIT_COUNT):
+def score(lng, lat, precision=BIT_COUNT):
     h = encode_uint64(lat, lng) >> (64-BIT_COUNT)
     return (h >> (BIT_COUNT-precision)) << (BIT_COUNT-precision)
 
 def next_score(score, precision=BIT_COUNT):
     last_n = BIT_COUNT - precision
     return ((score >> last_n) + 1) << last_n
+
+""" Assumes geohash is BIT_COUNT len.
+    Returns (longtitude, latitude)."""
+def decode(geohash):
+    geohash <<= (64-BIT_COUNT)
+    lat, lng = decode_uint64(geohash)
+    return (lng, lat)
 
 def cover_rect(x_min, y_min, x_max, y_max):
     """ Return up to 4 geohash ranges that completely cover the given rectangle.
