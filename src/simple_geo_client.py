@@ -1,13 +1,6 @@
 from geo_client import GeoClient
 import geohash_utils
 
-def car_member(car_id):
-    return 'car:{}'.format(car_id)
-
-def parse_car_member(member):
-    member_parts = member.split()
-    return (member_parts[0], float(member_parts[1]), float(member_parts[2]))
-
 class SimpleGeoClient(GeoClient):
     def __init__(self, redis, key):
         self.redis = redis
@@ -20,7 +13,7 @@ class SimpleGeoClient(GeoClient):
         self.redis.zadd(
                 self.geo_key,
                 geohash_utils.score(x,y),
-                car_member(car_id))
+                '{}:{}'.format(self.id_key, car_id))
 
     def prefix_find(self, key, score, prefix_len, withscores=False, limit=None):
         max_score = geohash_utils.next_score(score, prefix_len)-1
@@ -48,7 +41,6 @@ class SimpleGeoClient(GeoClient):
             car_members = self.range_find(
                     self.geo_key, hash_range[0], hash_range[1], True)
             for car_member, car_score in car_members:
-                # Trebam score
                 x, y = geohash_utils.decode(int(car_score))
                 if x_min <= x <= x_max and y_min <= y <= y_max:
                     ret.add((car_member, x, y))

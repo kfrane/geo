@@ -47,6 +47,7 @@ def cover_rect(x_min, y_min, x_max, y_max):
     return list(ret)
 
 if __name__ == '__main__':
+    score(120, 40)
     rects = cover_rect(10, -40, 12, -39)
     rects.sort()
     for r in rects:
