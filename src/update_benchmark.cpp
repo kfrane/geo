@@ -53,6 +53,7 @@ void read_data(istream& data, vector <point>& ret) {
     if (sscanf(parts[3].c_str(), "%lf", &p.lat) != 1) {
       continue;
     }
+    if (p.lon < -180 || p.lon > 180 || p.lat < -90 || p.lat > 90) continue;
     // cout << "Id " << p.id << ", lon " << p.lon << ", lat " << p.lat << endl;
     ret.push_back(p);
     i++;
@@ -103,7 +104,7 @@ int main(int argc, char **argv) {
       }
     });
   }
-
+  cout << "About to start event loop (sending the data to redis)" << endl;
   // process event loop
   event_base_dispatch(base);
 

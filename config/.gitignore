@@ -1,0 +1,4 @@
+# Redis stuff
+*.conf
+*.aof
+*.rdb
