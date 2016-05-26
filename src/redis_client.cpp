@@ -60,8 +60,21 @@ void RedisClient::update(
       point_key.c_str());
 }
 
+void cb_func(evutil_socket_t fd, short what, void *arg) {
+  const char *data = (char *)arg;
+  printf("Got an event on socket %d:%s%s%s%s [%s]\n",
+      (int) fd,
+      (what&EV_TIMEOUT) ? " timeout" : "",
+      (what&EV_READ)    ? " read" : "",
+      (what&EV_WRITE)   ? " write" : "",
+      (what&EV_SIGNAL)  ? " signal" : "",
+      data);
+}
+
 /*
  * Usage example.
+ */
+/*
 int main() {
   const char *hostname = "127.0.0.1";
   int port = 30001;
@@ -73,14 +86,22 @@ int main() {
   struct event_base *base = event_base_new();
   // Create cluster passing acceptable address and port of one node of the cluster nodes
   cluster_p = AsyncHiredisCommand<>::createCluster(
-      hostname, port, static_cast<void*>( base ) );
+      hostname, port, static_cast<void*>(base));
+
+  struct event *ev1;
+  struct timeval five_seconds = {0,0};
+  // User event
+  ev1 = event_new(base, -1, EV_TIMEOUT, cb_func,
+             (char*)"Reading event");
+  event_add(ev1, &five_seconds);
 
   RedisClient client(cluster_p, "test2:");
   client.update("client1", 20, -30, [cluster_p] (bool success) {
     if (success == 0) {
       cout << "Update error" << endl;
     }
-    cluster_p->disconnect();
+    cout << "Update finished" << endl;
+//    cluster_p->disconnect();
   });
 
   // process event loop
