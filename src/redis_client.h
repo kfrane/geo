@@ -13,6 +13,7 @@ using RedisCluster::Cluster;
 class RedisClient {
 public:
   typedef std::function<void(bool)> geoCallbackFn;
+  typedef std::function<void(bool)> queryCallbackFn;
 
   RedisClient(
       typename Cluster<redisAsyncContext>::ptr_t cluster,
@@ -29,6 +30,11 @@ public:
       double lon,
       double lat,
       geoCallbackFn callbackFn);
+
+  void rectangle_query(
+      double lon_min, double lon_max, double lat_min, double lat_max,
+      geoCallbackFn callbackFn);
+
 
 private:
   static void redisCallback(
