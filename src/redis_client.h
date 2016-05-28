@@ -20,10 +20,7 @@ public:
       std::string prefix) :
       cluster_(cluster),
       prefix_(prefix),
-      set_key_(prefix+std::string("set")) {
-        lon_range_ = {.max=180, .min=-180};
-        lat_range_ = {.max=90, .min=-90};
-      }
+      set_key_(prefix+std::string("set")) {}
 
   void update(
       const std::string& point_id,
@@ -56,7 +53,7 @@ private:
   std::string set_key_;
   static const int MAX_KEY_LEN = 50;
   static const int HASH_BITS = 26; // In total 52 bits
-  GeoHashRange lon_range_;
-  GeoHashRange lat_range_;
+  static const GeoHashRange lon_range_;
+  static const GeoHashRange lat_range_;
 };
 

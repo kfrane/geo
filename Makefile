@@ -22,4 +22,4 @@ test: redis_client.o geohash.o
 .PHONY: clean
 
 clean:
-	rm redis_client *.o update_benchmark
+	rm *.o update_benchmark

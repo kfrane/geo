@@ -9,6 +9,9 @@
 using std::cout;
 using std::endl;
 
+const GeoHashRange RedisClient::lon_range_ = GeoHashRange(180, -180);
+const GeoHashRange RedisClient::lat_range_ = GeoHashRange(90,-90);
+
 // declare a callback to process reply to redis command
 void RedisClient::redisCallback(
     typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data ) {

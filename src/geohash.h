@@ -32,81 +32,76 @@
 
 #include <stdint.h>
 
-#if defined(__cplusplus)
-extern "C"
+typedef enum
 {
-#endif
+  GEOHASH_NORTH = 0,
+  GEOHASH_EAST,
+  GEOHASH_WEST,
+  GEOHASH_SOUTH,
+  GEOHASH_SOUTH_WEST,
+  GEOHASH_SOUTH_EAST,
+  GEOHASH_NORT_WEST,
+  GEOHASH_NORT_EAST
+} GeoDirection;
 
-    typedef enum
-    {
-        GEOHASH_NORTH = 0,
-        GEOHASH_EAST,
-        GEOHASH_WEST,
-        GEOHASH_SOUTH,
-        GEOHASH_SOUTH_WEST,
-        GEOHASH_SOUTH_EAST,
-        GEOHASH_NORT_WEST,
-        GEOHASH_NORT_EAST
-    } GeoDirection;
+struct GeoHashBits {
+  uint64_t bits;
+  uint8_t step;
 
-    typedef struct
-    {
-            uint64_t bits;
-            uint8_t step;
-    } GeoHashBits;
+  GeoHashBits() : bits(0), step(0) {}
+  GeoHashBits(uint64_t bits_, uint8_t step_) : bits(bits_), step(step_) {}
+};
 
-    typedef struct
-    {
-            double max;
-            double min;
-    } GeoHashRange;
+struct GeoHashRange {
+  double max;
+  double min;
 
-    typedef struct
-    {
-            GeoHashBits hash;
-            GeoHashRange latitude;
-            GeoHashRange longitude;
-    } GeoHashArea;
+  GeoHashRange(double max_, double min_) : max(max_), min(min_) {}
+};
 
-    typedef struct
-    {
-            GeoHashBits north;
-            GeoHashBits east;
-            GeoHashBits west;
-            GeoHashBits south;
-            GeoHashBits north_east;
-            GeoHashBits south_east;
-            GeoHashBits north_west;
-            GeoHashBits south_west;
-    } GeoHashNeighbors;
+typedef struct
+{
+  GeoHashBits hash;
+  GeoHashRange latitude;
+  GeoHashRange longitude;
+} GeoHashArea;
 
-    /*
-     * 0:success
-     * -1:failed
-     */
-    int geohash_encode(GeoHashRange lat_range, GeoHashRange lon_range, double latitude, double longitude, uint8_t step, GeoHashBits* hash);
-    int geohash_decode(GeoHashRange lat_range, GeoHashRange lon_range, GeoHashBits hash, GeoHashArea* area);
+typedef struct
+{
+  GeoHashBits north;
+  GeoHashBits east;
+  GeoHashBits west;
+  GeoHashBits south;
+  GeoHashBits north_east;
+  GeoHashBits south_east;
+  GeoHashBits north_west;
+  GeoHashBits south_west;
+} GeoHashNeighbors;
 
-    /*
-     * Fast encode/decode version, more magic in implementation.
-     * 0 bit is used for <= middle value.
-     * 1 bit otherwise.
-     *
-     * Highest bit is the longtitude bit.
-     */
-    int geohash_fast_encode(GeoHashRange lat_range, GeoHashRange lon_range, double latitude, double longitude, uint8_t step, GeoHashBits* hash);
-    int geohash_fast_decode(GeoHashRange lat_range, GeoHashRange lon_range, GeoHashBits hash, GeoHashArea* area);
+/*
+ * 0:success
+ * -1:failed
+ */
+int geohash_encode(GeoHashRange lat_range, GeoHashRange lon_range, double latitude, double longitude, uint8_t step, GeoHashBits* hash);
+int geohash_decode(GeoHashRange lat_range, GeoHashRange lon_range, GeoHashBits hash, GeoHashArea* area);
 
-    int geohash_get_neighbors(GeoHashBits hash, GeoHashNeighbors* neighbors);
-    int geohash_get_neighbor(GeoHashBits hash, GeoDirection direction, GeoHashBits* neighbor);
+/*
+ * Fast encode/decode version, more magic in implementation.
+ * 0 bit is used for <= middle value.
+ * 1 bit otherwise.
+ *
+ * Highest bit is the longtitude bit.
+ */
+int geohash_fast_encode(const GeoHashRange& lat_range, const GeoHashRange& lon_range, double latitude, double longitude, uint8_t step, GeoHashBits* hash);
+int geohash_fast_decode(const GeoHashRange& lat_range, const GeoHashRange& lon_range, GeoHashBits hash, GeoHashArea* area);
 
-    GeoHashBits geohash_next_leftbottom(GeoHashBits bits);
-    GeoHashBits geohash_next_rightbottom(GeoHashBits bits);
-    GeoHashBits geohash_next_lefttop(GeoHashBits bits);
-    GeoHashBits geohash_next_righttop(GeoHashBits bits);
+int geohash_get_neighbors(GeoHashBits hash, GeoHashNeighbors* neighbors);
+int geohash_get_neighbor(GeoHashBits hash, GeoDirection direction, GeoHashBits* neighbor);
+
+GeoHashBits geohash_next_leftbottom(GeoHashBits bits);
+GeoHashBits geohash_next_rightbottom(GeoHashBits bits);
+GeoHashBits geohash_next_lefttop(GeoHashBits bits);
+GeoHashBits geohash_next_righttop(GeoHashBits bits);
 
 
-#if defined(__cplusplus)
-}
-#endif
 #endif /* GEOHASH_H_ */

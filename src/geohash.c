@@ -199,8 +199,12 @@ static inline uint64_t deinterleave64(uint64_t interleaved)
 }
 
 int geohash_fast_encode(
-        GeoHashRange lat_range, GeoHashRange lon_range, double latitude,
-        double longitude, uint8_t step,  GeoHashBits* hash)
+        const GeoHashRange& lat_range,
+        const GeoHashRange& lon_range,
+        double latitude,
+        double longitude,
+        uint8_t step,
+        GeoHashBits* hash)
 {
     if (NULL == hash || step > 32 || step == 0)
     {
@@ -233,7 +237,11 @@ int geohash_fast_encode(
     return 0;
 }
 
-int geohash_fast_decode(GeoHashRange lat_range, GeoHashRange lon_range, GeoHashBits hash, GeoHashArea* area)
+int geohash_fast_decode(
+    const GeoHashRange& lat_range,
+    const GeoHashRange& lon_range,
+    GeoHashBits hash,
+    GeoHashArea* area)
 {
     if (NULL == area)
     {
