@@ -7,7 +7,7 @@ INCLUDES = -I$(REDIS_BASE_DIR)/include
 
 all: update_benchmark
 
-geohash.o: src/geohash.c src/geohash.h
+geohash.o: src/geohash.cpp src/geohash.h
 	$(CC) -c $<
 
 redis_client.o: src/redis_client.cpp src/redis_client.h src/geohash.h
