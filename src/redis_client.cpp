@@ -9,17 +9,12 @@
 using std::cout;
 using std::endl;
 
-const GeoHashRange RedisClient::lon_range_ = GeoHashRange(180, -180);
-const GeoHashRange RedisClient::lat_range_ = GeoHashRange(90,-90);
-
 // declare a callback to process reply to redis command
-void RedisClient::redisCallback(
+void RedisClient::redisUpdateCallback(
     typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data ) {
-  // declare local pointer to work with reply
   redisReply * reply = static_cast<redisReply*>( r );
-  // cast data that you pass as callback parameter below (not necessary)
-  RedisClient::CallbackData *callbackData = static_cast<RedisClient::CallbackData*>(data);
-  // check redis reply usual
+  RedisClient::UpdateCallbackData *callbackData =
+    static_cast<RedisClient::UpdateCallbackData*>(data);
   if (reply->type == REDIS_REPLY_ERROR) {
     cout << "Reply error " << reply->str << endl;
     callbackData->success_ = false;
@@ -32,35 +27,86 @@ void RedisClient::redisCallback(
   }
 }
 
+// declare a callback to process reply to redis command
+void RedisClient::redisRectangleCallback(
+    typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data ) {
+  redisReply * reply = static_cast<redisReply*>( r );
+  RedisClient::RectangleCallbackData *callbackData =
+    static_cast<RedisClient::RectangleCallbackData*>(data);
+  if (reply->type == REDIS_REPLY_ERROR) {
+    cout << "Reply error " << reply->str << endl;
+    callbackData->success_ = false;
+  }
+
+  assert (reply->type == REDIS_REPLY_ARRAY);
+  cout << endl << "reply elements " << reply->elements << endl;
+  for (int i = 0; i < reply->elements; i+=2) {
+    // array consists of (id, hash) pairs.
+    const char* curr_id = reply->element[i]->str;
+    const char* curr_hash = reply->element[i+1]->str;
+    cout << curr_id << " hash: " << curr_hash << endl;
+    callbackData->add_point(GeoPoint::from_hash(curr_id, curr_hash));
+  }
+  cout << endl;
+
+  callbackData->cnt_--;
+  if (callbackData->cnt_ == 0) {
+    callbackData->call();
+    delete callbackData; // Only delete after calling the callbackFn
+  }
+}
+
+
 void RedisClient::update(
     const std::string& point_id,
     double lon,
     double lat,
-    geoCallbackFn callbackFn) {
+    updateCallbackFn callbackFn) {
   std::string point_key(prefix_ + point_id);
   std::stringstream point_data;
   point_data << lon << " " << lat;
 
-  CallbackData *callbackData = new CallbackData(callbackFn, 2);
+  UpdateCallbackData *callbackData = new UpdateCallbackData(callbackFn, 2);
   AsyncHiredisCommand<>::Command(cluster_,
       point_key,                          // key accessed in current command
-      redisCallback,                        // callback to process reply
+      redisUpdateCallback,                        // callback to process reply
       static_cast<void*>(callbackData),   // custom user data pointer
       "SET %s %s",                        // command
       point_key.c_str(),                          // paramener - key
       point_data.str().c_str());              // parameter - value
 
-  GeoHashBits hash;
-  assert(geohash_fast_encode(
-        lat_range_, lon_range_, lat, lon, HASH_BITS, &hash) == 0);
+  uint64_t hash;
+  GeoPoint::encode(lon, lat);
   AsyncHiredisCommand<>::Command(cluster_,
       set_key_,                          // key accessed in current command
-      redisCallback,                        // callback to process reply
+      redisUpdateCallback,                        // callback to process reply
       static_cast<void*>(callbackData),   // custom user data pointer
       "ZADD %s %lld %s",                  // set_key, geohash, point_key
       set_key_.c_str(),
-      hash.bits,
+      hash,
       point_key.c_str());
+}
+
+void RedisClient::rectangle_query(
+          double lon_min,
+          double lon_max,
+          double lat_min,
+          double lat_max,
+          queryCallbackFn callbackFn) {
+  RectangleCallbackData *callbackData = new RectangleCallbackData(callbackFn, 1);
+  cout << set_key_ << endl;
+//  GeoHashBits hash;
+//  assert(geohash_fast_encode(
+//        lat_range_, lon_range_, lat, lon, HASH_BITS, &hash) == 0);
+  uint64_t score_start = 0, score_end = 1LL<<53;
+  AsyncHiredisCommand<>::Command(cluster_,
+      set_key_,                          // key accessed in current command
+      redisRectangleCallback,                        // callback to process reply
+      static_cast<void*>(callbackData),   // custom user data pointer
+      "ZRANGEBYSCORE %s %lld %lld WITHSCORES LIMIT 0 20",
+      set_key_.c_str(),
+      score_start,
+      score_end);
 }
 
 void cb_func(evutil_socket_t fd, short what, void *arg) {

@@ -56,15 +56,19 @@ struct GeoHashRange {
   double max;
   double min;
 
+  GeoHashRange() {}
   GeoHashRange(double max_, double min_) : max(max_), min(min_) {}
+
+  double get() { return (max+min)/2.0; }
 };
 
-typedef struct
-{
+struct GeoHashArea {
   GeoHashBits hash;
   GeoHashRange latitude;
   GeoHashRange longitude;
-} GeoHashArea;
+
+  GeoHashArea() {}
+};
 
 typedef struct
 {

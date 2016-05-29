@@ -1,4 +1,5 @@
 update_benchmark
+rectangle_benchmark
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
