@@ -74,7 +74,7 @@ void RedisClient::update(
       point_data.str().c_str());              // parameter - value
 
   uint64_t hash;
-  GeoPoint::encode(lon, lat);
+  hash = GeoPoint::encode(lon, lat);
   AsyncHiredisCommand<>::Command(cluster_,
       set_key_,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply

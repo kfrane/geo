@@ -5,7 +5,7 @@ SYSLIB = -rdynamic -lhiredis -lpthread -levent
 REDIS_BASE_DIR = ../cpp-hiredis-cluster
 INCLUDES = -I$(REDIS_BASE_DIR)/include
 
-all: update_benchmark rectangle_benchmark
+all: update_benchmark rectangle_benchmark generate_rectangles
 tests: geohash_test
 
 geohash.o: src/geohash.cpp src/geohash.h
@@ -25,6 +25,9 @@ rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o geohash.o geopoi
 
 geohash_test: src/geohash_test.cpp geohash.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
+
+generate_rectangles: src/generate_rectangles.cpp
+	$(CC) $(CFLAGS) $^ -o$@
 
 .PHONY: clean
 

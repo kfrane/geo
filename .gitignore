@@ -1,6 +1,7 @@
 update_benchmark
 rectangle_benchmark
 geohash_test
+generate_rectangles
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
