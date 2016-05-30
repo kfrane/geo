@@ -8,6 +8,7 @@
 
 using std::cout;
 using std::endl;
+using std::vector;
 
 // declare a callback to process reply to redis command
 void RedisClient::redisUpdateCallback(
@@ -39,15 +40,12 @@ void RedisClient::redisRectangleCallback(
   }
 
   assert (reply->type == REDIS_REPLY_ARRAY);
-  cout << endl << "reply elements " << reply->elements << endl;
   for (int i = 0; i < reply->elements; i+=2) {
     // array consists of (id, hash) pairs.
     const char* curr_id = reply->element[i]->str;
     const char* curr_hash = reply->element[i+1]->str;
-    cout << curr_id << " hash: " << curr_hash << endl;
     callbackData->add_point(GeoPoint::from_hash(curr_id, curr_hash));
   }
-  cout << endl;
 
   callbackData->cnt_--;
   if (callbackData->cnt_ == 0) {
@@ -93,20 +91,23 @@ void RedisClient::rectangle_query(
           double lat_min,
           double lat_max,
           queryCallbackFn callbackFn) {
-  RectangleCallbackData *callbackData = new RectangleCallbackData(callbackFn, 1);
-  cout << set_key_ << endl;
-//  GeoHashBits hash;
-//  assert(geohash_fast_encode(
-//        lat_range_, lon_range_, lat, lon, HASH_BITS, &hash) == 0);
-  uint64_t score_start = 0, score_end = 1LL<<53;
-  AsyncHiredisCommand<>::Command(cluster_,
-      set_key_,                          // key accessed in current command
-      redisRectangleCallback,                        // callback to process reply
-      static_cast<void*>(callbackData),   // custom user data pointer
-      "ZRANGEBYSCORE %s %lld %lld WITHSCORES LIMIT 0 20",
-      set_key_.c_str(),
-      score_start,
-      score_end);
+  vector <GeoHashBits> geo_hashes = cover_rectangle(
+      GeoPoint::lat_range, GeoPoint::lon_range,
+      lat_min, lat_max, lon_min, lon_max);
+
+  RectangleCallbackData *callbackData = new RectangleCallbackData(
+                                              callbackFn, geo_hashes.size());
+  for (GeoHashBits geo_hash : geo_hashes) {
+    GeoPoint::Range score_range = GeoPoint::to_range(geo_hash);
+    AsyncHiredisCommand<>::Command(cluster_,
+        set_key_,                           // key accessed in current command
+        redisRectangleCallback,             // callback to process reply
+        static_cast<void*>(callbackData),   // custom user data pointer
+        "ZRANGEBYSCORE %s %lld %lld WITHSCORES",
+        set_key_.c_str(),
+        score_range.first,
+        score_range.second);
+  }
 }
 
 void cb_func(evutil_socket_t fd, short what, void *arg) {

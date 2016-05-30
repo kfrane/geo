@@ -1,17 +1,18 @@
 CC	= g++
 
-CFLAGS = -std=c++11 -g
+CFLAGS = -std=c++11 -O2
 SYSLIB = -rdynamic -lhiredis -lpthread -levent
 REDIS_BASE_DIR = ../cpp-hiredis-cluster
 INCLUDES = -I$(REDIS_BASE_DIR)/include
 
 all: update_benchmark rectangle_benchmark
+tests: geohash_test
 
 geohash.o: src/geohash.cpp src/geohash.h
-	$(CC) -c $<
+	$(CC) -c $(CFLAGS) $<
 
 geopoint.o: src/geopoint.cpp src/geopoint.h
-	$(CC) -c $<
+	$(CC) -c $(CFLAGS) $<
 
 redis_client.o: src/redis_client.cpp src/redis_client.h src/geohash.h src/geopoint.h
 	$(CC) -c $(CFLAGS) $(INCLUDES) $< $(SYSLIB)
@@ -22,10 +23,10 @@ update_benchmark: src/update_benchmark.cpp redis_client.o geohash.o geopoint.o
 rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o geohash.o geopoint.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
-test: redis_client.o geohash.o geopoint.o
+geohash_test: src/geohash_test.cpp geohash.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
 .PHONY: clean
 
 clean:
-	rm *.o update_benchmark rectangle_benchmark
+	rm *.o update_benchmark rectangle_benchmark geohash_test

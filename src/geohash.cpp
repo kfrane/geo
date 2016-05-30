@@ -336,6 +336,17 @@ int geohash_get_neighbors(GeoHashBits hash, GeoHashNeighbors* neighbors)
     return 0;
 }
 
+std::vector<GeoHashBits> geohash_get_neighbors(GeoHashBits hash) {
+  std::vector <GeoHashBits> ret;
+  for (int dir = 0; dir < GEOHASH_DIR_COUNT; dir++) {
+    GeoHashBits c;
+    geohash_get_neighbor(hash, (GeoDirection)dir, &c);
+    ret.push_back(c);
+  }
+  return ret;
+}
+
+
 int geohash_get_neighbor(GeoHashBits hash, GeoDirection direction, GeoHashBits* neighbor)
 {
     if (NULL == neighbor)
@@ -399,6 +410,44 @@ int geohash_get_neighbor(GeoHashBits hash, GeoDirection direction, GeoHashBits* 
         }
     }
     return 0;
+}
+
+std::vector <GeoHashBits> cover_rectangle(
+    const GeoHashRange& lat_range, const GeoHashRange& lon_range,
+    double lat_min, double lat_max, double lon_min, double lon_max) {
+  double curr_lat_range = lat_range.max - lat_range.min;
+  double curr_lon_range = lon_range.max - lon_range.min;
+  GeoHashArea rectangle_area;
+  rectangle_area.latitude = GeoHashRange(lat_max, lat_min);
+  rectangle_area.longitude = GeoHashRange(lon_max, lon_min);
+
+  int bits = 0;
+  while (curr_lon_range > (lon_max-lon_min) &&
+         curr_lat_range > (lat_max-lat_min)) {
+    curr_lon_range /= 2.0;
+    curr_lat_range /= 2.0;
+    bits += 2;
+  }
+  double mid_lat = (lat_min+lat_max)/2.0;
+  double mid_lon = (lon_min+lon_max)/2.0;
+
+
+  GeoHashBits central_hash;
+  geohash_fast_encode(
+      lat_range, lon_range, mid_lat, mid_lon, bits/2, &central_hash);
+
+  std::vector <GeoHashBits> neighbors = geohash_get_neighbors(central_hash);
+  std::vector <GeoHashBits> ret;
+  for (const GeoHashBits& rectangle : neighbors) {
+    GeoHashArea area;
+    geohash_fast_decode(lat_range, lon_range, rectangle, &area);
+    if (area.intersects(rectangle_area)) {
+      ret.push_back(rectangle);
+    }
+  }
+  ret.push_back(central_hash);
+
+  return ret;
 }
 
 GeoHashBits geohash_next_leftbottom(GeoHashBits bits)

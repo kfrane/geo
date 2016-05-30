@@ -10,6 +10,11 @@
 
 using namespace std;
 
+/**
+ * Able to make approximately 7300-7600 req/s when results count is <= 5.
+ * TODO: Cleanup of this stuff and make it read queries from file.
+ */
+
 struct point {
   string id;
   double lon;
@@ -68,7 +73,7 @@ Cluster<redisAsyncContext>::ptr_t cluster_p;
 RedisClient *client;
 size_t next_to_schedule = 0;
 size_t completed = 0;
-const size_t ROUND_SIZE = 1999;
+const size_t ROUND_SIZE = 100;
 
 struct event* main_loop_ev;
 struct timeval zero_seconds = {0,0};
@@ -80,7 +85,7 @@ void print_progress(int completed, int total) {
 }
 
 void main_loop(evutil_socket_t fd, short what, void *arg) {
-  print_progress(completed, points.size());
+  // print_progress(completed, points.size());
   if (!evtimer_pending(main_loop_ev, NULL)) {
     event_del(main_loop_ev);
     if (next_to_schedule >= points.size()) return;
@@ -90,19 +95,27 @@ void main_loop(evutil_socket_t fd, short what, void *arg) {
   int round = min(next_to_schedule+ROUND_SIZE, points.size());
   for (; next_to_schedule < round; next_to_schedule++) {
     point p = points[next_to_schedule];
-    cout << "seinding query" << endl;
-    client->rectangle_query(80, 90, 30, 40,
-        [] (bool success, vector <GeoPoint> *results) {
+    double lon_min = 116.315, lon_max = 116.32;
+    double lat_min = 40.045, lat_max = 40.05;
+    client->rectangle_query(lon_min, lon_max, lat_min, lat_max,
+        [=] (bool success, vector <GeoPoint> *results) {
           if (success == 0) {
             cout << "Update error" << endl;
           }
-          cout << "success " << success << endl;
-          for (auto r : *results) {
-            cout << r.getId() << ": "
-                 << r.getLongtitude() << " " << r.getLatitude() << endl;
+      //    cout << "success " << success << endl;
+          for (const auto& r : *results) {
+            if (r.getLongtitude() < lon_min || r.getLongtitude() > lon_max ||
+                r.getLatitude() < lat_min || r.getLatitude() > lat_max) {
+              continue;
+            }
+          //  cout << r.getId() << ": "
+          //       << r.getLongtitude() << " " << r.getLatitude() << endl;
           }
           delete results;
           completed++;
+          if (completed%100 == 0) {
+            print_progress(completed, points.size());
+          }
           //    cout << "Completed " << completed << " out of " << points.size() << endl;
           if (completed == points.size()) {
             cout << endl << "About to call disconnect" << endl;

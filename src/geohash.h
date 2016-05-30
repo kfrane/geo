@@ -31,6 +31,8 @@
 #define GEOHASH_H_
 
 #include <stdint.h>
+#include <vector>
+
 
 typedef enum
 {
@@ -41,7 +43,8 @@ typedef enum
   GEOHASH_SOUTH_WEST,
   GEOHASH_SOUTH_EAST,
   GEOHASH_NORT_WEST,
-  GEOHASH_NORT_EAST
+  GEOHASH_NORT_EAST,
+  GEOHASH_DIR_COUNT // Only used as enum size
 } GeoDirection;
 
 struct GeoHashBits {
@@ -60,6 +63,10 @@ struct GeoHashRange {
   GeoHashRange(double max_, double min_) : max(max_), min(min_) {}
 
   double get() { return (max+min)/2.0; }
+
+  bool intersects(const GeoHashRange &other) {
+    return other.max > min && other.min < max;
+  }
 };
 
 struct GeoHashArea {
@@ -68,6 +75,10 @@ struct GeoHashArea {
   GeoHashRange longitude;
 
   GeoHashArea() {}
+  bool intersects(const GeoHashArea &other) {
+    return latitude.intersects(other.latitude) &&
+           longitude.intersects(other.longitude);
+  }
 };
 
 typedef struct
@@ -100,8 +111,13 @@ int geohash_fast_encode(const GeoHashRange& lat_range, const GeoHashRange& lon_r
 int geohash_fast_decode(const GeoHashRange& lat_range, const GeoHashRange& lon_range, GeoHashBits hash, GeoHashArea* area);
 
 int geohash_get_neighbors(GeoHashBits hash, GeoHashNeighbors* neighbors);
+std::vector<GeoHashBits> geohash_get_neighbors(GeoHashBits hash);
 int geohash_get_neighbor(GeoHashBits hash, GeoDirection direction, GeoHashBits* neighbor);
+std::vector <GeoHashBits> cover_rectangle(
+    const GeoHashRange& lat_range, const GeoHashRange& lon_range,
+    double lat_min, double lat_max, double lon_min, double lon_max);
 
+/** Go level deeper (split area in 4). */
 GeoHashBits geohash_next_leftbottom(GeoHashBits bits);
 GeoHashBits geohash_next_rightbottom(GeoHashBits bits);
 GeoHashBits geohash_next_lefttop(GeoHashBits bits);
