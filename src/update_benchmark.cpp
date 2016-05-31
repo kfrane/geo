@@ -113,14 +113,21 @@ void create_user_event(event_base *base) {
   evtimer_add(main_loop_ev, &zero_seconds);
 }
 
-RedisClientBase *create_redis(const char*arg, const string& key_prefix) {
+RedisClientBase *create_redis(
+    const char*arg, const string& key_prefix, int split_level) {
   if (strcmp(arg, "basic") == 0) {
     return new RedisClient(cluster_p, key_prefix);
   } else if (strcmp(arg, "smart") == 0) {
-    return new SmartRedisClient(cluster_p, key_prefix, 11);
+    return new SmartRedisClient(cluster_p, key_prefix, split_level);
   }
   cerr << "Redis client should be basic or smart" << endl;
   return NULL;
+}
+
+void print_usage() {
+  cerr << "Usage ./update_benchmark key_prefix basic|smart split_level"
+       << endl;
+  exit(1);
 }
 
 int main(int argc, char **argv) {
@@ -134,6 +141,10 @@ int main(int argc, char **argv) {
   const char* redis_client_type = "basic";
   if (argc > 2) {
     redis_client_type = argv[2];
+  }
+  int split_level = 11;
+  if (argc > 3) {
+    sscanf(argv[3], "%d", &split_level);
   }
 
   read_data(cin, points);
@@ -150,7 +161,7 @@ int main(int argc, char **argv) {
   cluster_p = AsyncHiredisCommand<>::createCluster(
       hostname, port, static_cast<void*>(base));
 
-  client = create_redis(redis_client_type, key_prefix);
+  client = create_redis(redis_client_type, key_prefix, split_level);
 
   chrono::time_point<chrono::system_clock> start, end;
   start = chrono::system_clock::now();

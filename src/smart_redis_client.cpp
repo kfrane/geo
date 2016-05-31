@@ -100,7 +100,12 @@ void SmartRedisClient::rectangle_query(
   vector <GeoPoint::Range> ranges;
   for (GeoHashBits geo_hash : geo_hashes) {
     GeoPoint::Range range = GeoPoint::to_range(geo_hash);
+    int old_len = ranges.size();
     GeoPoint::to_ranges(ranges, range, split_level_);
+    int new_len = ranges.size();
+    if (new_len-old_len > 1) {
+     // cout << "Podijelio na " << new_len-old_len << " dijelova" << endl;
+    }
   }
 
   RectangleCallbackData *callbackData = new RectangleCallbackData(

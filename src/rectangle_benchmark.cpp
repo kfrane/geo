@@ -14,6 +14,8 @@ using namespace std;
 
 /**
  * Able to make approximately 7300-7600 req/s when results count is <= 5.
+ * Level 11 never has to split a query between multiple sets, it only happens
+ * at level 15. The request rate drops from 7200 to 6200 req/s.
  */
 
 struct rectangle {
@@ -141,14 +143,21 @@ void create_user_event(event_base *base) {
   evtimer_add(main_loop_ev, &zero_seconds);
 }
 
-RedisClientBase *create_redis(const char*arg, const string& key_prefix) {
+RedisClientBase *create_redis(
+    const char*arg, const string& key_prefix, int split_level) {
   if (strcmp(arg, "basic") == 0) {
     return new RedisClient(cluster_p, key_prefix);
   } else if (strcmp(arg, "smart") == 0) {
-    return new SmartRedisClient(cluster_p, key_prefix, 11);
+    return new SmartRedisClient(cluster_p, key_prefix, split_level);
   }
   cerr << "Redis client should be basic or smart" << endl;
   return NULL;
+}
+
+void print_usage() {
+  cerr << "Usage ./rectangle_benchmark key_prefix basic|smart split_level"
+       << endl;
+  exit(1);
 }
 
 int main(int argc, char **argv) {
@@ -170,6 +179,12 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  int split_level = 11;
+  if (argc > 3) {
+    sscanf(argv[3], "%d", &split_level);
+  }
+
+
   signal(SIGPIPE, SIG_IGN);
   // create libevent base
   struct event_base *base = event_base_new();
@@ -178,7 +193,7 @@ int main(int argc, char **argv) {
   cluster_p = AsyncHiredisCommand<>::createCluster(
       hostname, port, static_cast<void*>(base));
 
-  client = create_redis(redis_client_type, key_prefix);
+  client = create_redis(redis_client_type, key_prefix, split_level);
 
   chrono::time_point<chrono::system_clock> start, end;
   start = chrono::system_clock::now();
