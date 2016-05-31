@@ -6,7 +6,7 @@ REDIS_BASE_DIR = ../cpp-hiredis-cluster
 INCLUDES = -I$(REDIS_BASE_DIR)/include
 
 all: update_benchmark rectangle_benchmark generate_rectangles
-tests: geohash_test
+tests: geohash_test geopoint_test
 
 geohash.o: src/geohash.cpp src/geohash.h
 	$(CC) -c $(CFLAGS) $<
@@ -23,11 +23,14 @@ smart_redis_client.o: src/smart_redis_client.cpp src/smart_redis_client.h src/re
 update_benchmark: src/update_benchmark.cpp redis_client.o smart_redis_client.o geohash.o geopoint.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
-rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o geohash.o geopoint.o
+rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o smart_redis_client.o geohash.o geopoint.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
 geohash_test: src/geohash_test.cpp geohash.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
+
+geopoint_test: src/geopoint_test.cpp geohash.o geopoint.o
+	$(CC) $(CFLAGS) $^ -o$@
 
 generate_rectangles: src/generate_rectangles.cpp
 	$(CC) $(CFLAGS) $^ -o$@

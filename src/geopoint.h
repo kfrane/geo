@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdio>
 #include <utility>
+#include <vector>
 
 #include "geohash.h"
 
@@ -34,7 +35,26 @@ public:
     return hash.bits;
   }
 
+  static std::string get_prefix(uint64_t hash, int split_level) {
+    int prefix_end = HASH_BITS - 2*split_level;
+    std::string prefix;
+    for (int i = HASH_BITS-1; i >= prefix_end; i--) {
+      if ((1LL<<i)&hash) {
+        prefix += "1";
+      } else {
+        prefix += "0";
+      }
+    }
+    return prefix;
+  }
+
   static Range to_range(const GeoHashBits& hash);
+
+  /** Return Ranges where each hash in Range has the same prefix of len
+   * 2*split_level.
+   */
+  static void to_ranges(
+      std::vector<Range>& ret, const Range& range, int split_level);
 
   double getLongtitude() const { return lon_; }
   double getLatitude() const { return lat_; }

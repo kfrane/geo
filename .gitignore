@@ -1,6 +1,8 @@
+# My binaries
 update_benchmark
 rectangle_benchmark
 geohash_test
+geopoint_test
 generate_rectangles
 
 # Byte-compiled / optimized / DLL files

@@ -7,6 +7,8 @@
 #include <algorithm>
 
 #include "redis_client.h"
+#include "smart_redis_client.h"
+#include "redis_client_base.h"
 
 using namespace std;
 
@@ -73,7 +75,7 @@ void read_data(istream& data, vector <rectangle>& ret) {
 vector <rectangle> points;
 // Declare cluster pointer with redisAsyncContext as template parameter
 Cluster<redisAsyncContext>::ptr_t cluster_p;
-RedisClient *client;
+RedisClientBase *client;
 size_t next_to_schedule = 0;
 size_t completed = 0;
 const size_t ROUND_SIZE = 100;
@@ -139,6 +141,16 @@ void create_user_event(event_base *base) {
   evtimer_add(main_loop_ev, &zero_seconds);
 }
 
+RedisClientBase *create_redis(const char*arg, const string& key_prefix) {
+  if (strcmp(arg, "basic") == 0) {
+    return new RedisClient(cluster_p, key_prefix);
+  } else if (strcmp(arg, "smart") == 0) {
+    return new SmartRedisClient(cluster_p, key_prefix, 11);
+  }
+  cerr << "Redis client should be basic or smart" << endl;
+  return NULL;
+}
+
 int main(int argc, char **argv) {
   const char *hostname = "127.0.0.1";
   int port = 30001;
@@ -146,6 +158,10 @@ int main(int argc, char **argv) {
   string key_prefix = "test2:";
   if (argc > 1) {
     key_prefix = string(argv[1]);
+  }
+  const char* redis_client_type = "basic";
+  if (argc > 2) {
+    redis_client_type = argv[2];
   }
 
   read_data(cin, points);
@@ -162,7 +178,7 @@ int main(int argc, char **argv) {
   cluster_p = AsyncHiredisCommand<>::createCluster(
       hostname, port, static_cast<void*>(base));
 
-  client = new RedisClient(cluster_p, key_prefix);
+  client = create_redis(redis_client_type, key_prefix);
 
   chrono::time_point<chrono::system_clock> start, end;
   start = chrono::system_clock::now();

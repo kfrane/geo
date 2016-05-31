@@ -65,6 +65,7 @@ void SmartRedisClient::update(
   point_data << lon << " " << lat;
 
   UpdateCallbackData *callbackData = new UpdateCallbackData(callbackFn, 2);
+  // TODO: Use GETSET to delete the old value from set.
   AsyncHiredisCommand<>::Command(cluster_,
       point_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
@@ -75,12 +76,13 @@ void SmartRedisClient::update(
 
   uint64_t hash;
   hash = GeoPoint::encode(lon, lat);
+  std::string my_set_key = set_key_ + GeoPoint::get_prefix(hash, split_level_);
   AsyncHiredisCommand<>::Command(cluster_,
-      set_key_,                          // key accessed in current command
+      my_set_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
       static_cast<void*>(callbackData),   // custom user data pointer
       "ZADD %s %lld %s",                  // set_key, geohash, point_key
-      set_key_.c_str(),
+      my_set_key.c_str(),
       hash,
       point_key.c_str());
 }
@@ -95,71 +97,26 @@ void SmartRedisClient::rectangle_query(
       GeoPoint::lat_range, GeoPoint::lon_range,
       lat_min, lat_max, lon_min, lon_max);
 
-  RectangleCallbackData *callbackData = new RectangleCallbackData(
-                                              callbackFn, geo_hashes.size());
+  vector <GeoPoint::Range> ranges;
   for (GeoHashBits geo_hash : geo_hashes) {
-    GeoPoint::Range score_range = GeoPoint::to_range(geo_hash);
+    GeoPoint::Range range = GeoPoint::to_range(geo_hash);
+    GeoPoint::to_ranges(ranges, range, split_level_);
+  }
+
+  RectangleCallbackData *callbackData = new RectangleCallbackData(
+                                              callbackFn, ranges.size());
+  for (GeoPoint::Range score_range : ranges) {
+    assert (GeoPoint::get_prefix(score_range.first, split_level_) ==
+            GeoPoint::get_prefix(score_range.second, split_level_));
+    std::string my_set_key =
+      set_key_ + GeoPoint::get_prefix(score_range.first, split_level_);
     AsyncHiredisCommand<>::Command(cluster_,
-        set_key_,                           // key accessed in current command
+        my_set_key,                           // key accessed in current command
         redisRectangleCallback,             // callback to process reply
         static_cast<void*>(callbackData),   // custom user data pointer
         "ZRANGEBYSCORE %s %lld %lld WITHSCORES",
-        set_key_.c_str(),
+        my_set_key.c_str(),
         score_range.first,
         score_range.second);
   }
 }
-
-/*
- * Usage example.
- */
-
-/*
- void cb_func(evutil_socket_t fd, short what, void *arg) {
-  const char *data = (char *)arg;
-  printf("Got an event on socket %d:%s%s%s%s [%s]\n",
-      (int) fd,
-      (what&EV_TIMEOUT) ? " timeout" : "",
-      (what&EV_READ)    ? " read" : "",
-      (what&EV_WRITE)   ? " write" : "",
-      (what&EV_SIGNAL)  ? " signal" : "",
-      data);
-}
-
-int main() {
-  const char *hostname = "127.0.0.1";
-  int port = 30001;
-
-   // Declare cluster pointer with redisAsyncContext as template parameter
-  Cluster<redisAsyncContext>::ptr_t cluster_p;
-  signal(SIGPIPE, SIG_IGN);
-  // create libevent base
-  struct event_base *base = event_base_new();
-  // Create cluster passing acceptable address and port of one node of the cluster nodes
-  cluster_p = AsyncHiredisCommand<>::createCluster(
-      hostname, port, static_cast<void*>(base));
-
-  struct event *ev1;
-  struct timeval five_seconds = {0,0};
-  // User event
-  ev1 = event_new(base, -1, EV_TIMEOUT, cb_func,
-             (char*)"Reading event");
-  event_add(ev1, &five_seconds);
-
-  SmartRedisClient client(cluster_p, "test2:");
-  client.update("client1", 20, -30, [cluster_p] (bool success) {
-    if (success == 0) {
-      cout << "Update error" << endl;
-    }
-    cout << "Update finished" << endl;
-//    cluster_p->disconnect();
-  });
-
-  // process event loop
-  event_base_dispatch(base);
-
-  delete cluster_p;
-  event_base_free(base);
-  return 0;
-}
-*/
