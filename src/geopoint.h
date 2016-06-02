@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <inttypes.h>
+#include <cinttypes>
 #include <cassert>
 #include <cstdio>
 #include <utility>
@@ -22,7 +22,7 @@ public:
 
   static GeoPoint from_hash(const char* id, const char* hash) {
     uint64_t hash_bits;
-    sscanf(hash, "%lld", &hash_bits);
+    sscanf(hash, "%" SCNu64, &hash_bits);
     GeoHashBits geohash(hash_bits, HASH_STEP);
     GeoHashArea area;
     geohash_fast_decode(lat_range, lon_range, geohash, &area);

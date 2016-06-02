@@ -20,5 +20,7 @@ public:
   virtual void rectangle_query(
       double lon_min, double lon_max, double lat_min, double lat_max,
       queryCallbackFn callbackFn) = 0;
+
+  virtual ~RedisClientBase() {}
 };
 

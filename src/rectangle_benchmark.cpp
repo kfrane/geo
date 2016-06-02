@@ -103,7 +103,7 @@ void main_loop(evutil_socket_t fd, short what, void *arg) {
     evtimer_add(main_loop_ev, &zero_seconds);
   }
 
-  int round = min(next_to_schedule+ROUND_SIZE, points.size());
+size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
   for (; next_to_schedule < round; next_to_schedule++) {
     rectangle p = points[next_to_schedule];
     client->rectangle_query(p.lon_min, p.lon_max, p.lat_min, p.lat_max,

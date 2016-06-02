@@ -3,19 +3,35 @@
 #include <signal.h>
 #include <event2/event.h>
 
-#include "redis_client.h"
+#include "balanced_redis_client.h"
 #include "geohash.h"
 
 using std::cout;
 using std::endl;
 using std::vector;
 
+BalancedRedisClient::BalancedRedisClient(
+            typename Cluster<redisAsyncContext>::ptr_t cluster,
+            std::string prefix,
+            int set_count) :
+            cluster_(cluster),
+            prefix_(prefix),
+            set_count_(set_count),
+            set_key_(prefix+std::string("set:")) {
+        for (int set_index = 0; set_index < set_count; set_index++) {
+          std::string set_name = set_key_ + std::to_string(set_index);
+          set_names_.push_back(set_name);
+        }
+      }
+
+
+
 // declare a callback to process reply to redis command
-void RedisClient::redisUpdateCallback(
+void BalancedRedisClient::redisUpdateCallback(
     typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data ) {
   redisReply * reply = static_cast<redisReply*>( r );
-  RedisClient::UpdateCallbackData *callbackData =
-    static_cast<RedisClient::UpdateCallbackData*>(data);
+  BalancedRedisClient::UpdateCallbackData *callbackData =
+    static_cast<BalancedRedisClient::UpdateCallbackData*>(data);
   if (reply->type == REDIS_REPLY_ERROR) {
     cout << "Reply error " << reply->str << endl;
     callbackData->success_ = false;
@@ -29,18 +45,18 @@ void RedisClient::redisUpdateCallback(
 }
 
 // declare a callback to process reply to redis command
-void RedisClient::redisRectangleCallback(
+void BalancedRedisClient::redisRectangleCallback(
     typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data ) {
   redisReply * reply = static_cast<redisReply*>( r );
-  RedisClient::RectangleCallbackData *callbackData =
-    static_cast<RedisClient::RectangleCallbackData*>(data);
+  BalancedRedisClient::RectangleCallbackData *callbackData =
+    static_cast<BalancedRedisClient::RectangleCallbackData*>(data);
   if (reply->type == REDIS_REPLY_ERROR) {
     cout << "Reply error " << reply->str << endl;
     callbackData->success_ = false;
   }
 
   assert (reply->type == REDIS_REPLY_ARRAY);
-  for (size_t i = 0; i < reply->elements; i+=2) {
+  for (int i = 0; i < reply->elements; i+=2) {
     // array consists of (id, hash) pairs.
     const char* curr_id = reply->element[i]->str;
     const char* curr_hash = reply->element[i+1]->str;
@@ -55,7 +71,7 @@ void RedisClient::redisRectangleCallback(
 }
 
 
-void RedisClient::update(
+void BalancedRedisClient::update(
     const std::string& point_id,
     double lon,
     double lat,
@@ -65,6 +81,7 @@ void RedisClient::update(
   point_data << lon << " " << lat;
 
   UpdateCallbackData *callbackData = new UpdateCallbackData(callbackFn, 2);
+  // TODO: Use GETSET to delete the old value from set.
   AsyncHiredisCommand<>::Command(cluster_,
       point_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
@@ -75,17 +92,18 @@ void RedisClient::update(
 
   uint64_t hash;
   hash = GeoPoint::encode(lon, lat);
+  std::string my_set_key = set_key_ + GeoPoint::get_prefix(hash, set_count_);
   AsyncHiredisCommand<>::Command(cluster_,
-      set_key_,                          // key accessed in current command
+      my_set_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
       static_cast<void*>(callbackData),   // custom user data pointer
       "ZADD %s %lld %s",                  // set_key, geohash, point_key
-      set_key_.c_str(),
+      my_set_key.c_str(),
       hash,
       point_key.c_str());
 }
 
-void RedisClient::rectangle_query(
+void BalancedRedisClient::rectangle_query(
           double lon_min,
           double lon_max,
           double lat_min,
@@ -95,70 +113,31 @@ void RedisClient::rectangle_query(
       GeoPoint::lat_range, GeoPoint::lon_range,
       lat_min, lat_max, lon_min, lon_max);
 
-  RectangleCallbackData *callbackData = new RectangleCallbackData(
-                                              callbackFn, geo_hashes.size());
+  vector <GeoPoint::Range> ranges;
   for (GeoHashBits geo_hash : geo_hashes) {
-    GeoPoint::Range score_range = GeoPoint::to_range(geo_hash);
+    GeoPoint::Range range = GeoPoint::to_range(geo_hash);
+    int old_len = ranges.size();
+    GeoPoint::to_ranges(ranges, range, set_count_);
+    int new_len = ranges.size();
+    if (new_len-old_len > 1) {
+     // cout << "Podijelio na " << new_len-old_len << " dijelova" << endl;
+    }
+  }
+
+  RectangleCallbackData *callbackData = new RectangleCallbackData(
+                                              callbackFn, ranges.size());
+  for (GeoPoint::Range score_range : ranges) {
+    assert (GeoPoint::get_prefix(score_range.first, set_count_) ==
+            GeoPoint::get_prefix(score_range.second, set_count_));
+    std::string my_set_key =
+      set_key_ + GeoPoint::get_prefix(score_range.first, set_count_);
     AsyncHiredisCommand<>::Command(cluster_,
-        set_key_,                           // key accessed in current command
+        my_set_key,                           // key accessed in current command
         redisRectangleCallback,             // callback to process reply
         static_cast<void*>(callbackData),   // custom user data pointer
         "ZRANGEBYSCORE %s %lld %lld WITHSCORES",
-        set_key_.c_str(),
+        my_set_key.c_str(),
         score_range.first,
         score_range.second);
   }
 }
-
-void cb_func(evutil_socket_t fd, short what, void *arg) {
-  const char *data = (char *)arg;
-  printf("Got an event on socket %d:%s%s%s%s [%s]\n",
-      (int) fd,
-      (what&EV_TIMEOUT) ? " timeout" : "",
-      (what&EV_READ)    ? " read" : "",
-      (what&EV_WRITE)   ? " write" : "",
-      (what&EV_SIGNAL)  ? " signal" : "",
-      data);
-}
-
-/*
- * Usage example.
- */
-/*
-int main() {
-  const char *hostname = "127.0.0.1";
-  int port = 30001;
-
-   // Declare cluster pointer with redisAsyncContext as template parameter
-  Cluster<redisAsyncContext>::ptr_t cluster_p;
-  signal(SIGPIPE, SIG_IGN);
-  // create libevent base
-  struct event_base *base = event_base_new();
-  // Create cluster passing acceptable address and port of one node of the cluster nodes
-  cluster_p = AsyncHiredisCommand<>::createCluster(
-      hostname, port, static_cast<void*>(base));
-
-  struct event *ev1;
-  struct timeval five_seconds = {0,0};
-  // User event
-  ev1 = event_new(base, -1, EV_TIMEOUT, cb_func,
-             (char*)"Reading event");
-  event_add(ev1, &five_seconds);
-
-  RedisClient client(cluster_p, "test2:");
-  client.update("client1", 20, -30, [cluster_p] (bool success) {
-    if (success == 0) {
-      cout << "Update error" << endl;
-    }
-    cout << "Update finished" << endl;
-//    cluster_p->disconnect();
-  });
-
-  // process event loop
-  event_base_dispatch(base);
-
-  delete cluster_p;
-  event_base_free(base);
-  return 0;
-}
-*/

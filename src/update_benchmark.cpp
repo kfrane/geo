@@ -8,6 +8,7 @@
 
 #include "redis_client.h"
 #include "smart_redis_client.h"
+#include "balanced_redis_client.h"
 #include "redis_client_base.h"
 
 using namespace std;
@@ -89,7 +90,7 @@ void main_loop(evutil_socket_t fd, short what, void *arg) {
     evtimer_add(main_loop_ev, &zero_seconds);
   }
 
-  int round = min(next_to_schedule+ROUND_SIZE, points.size());
+  size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
   for (; next_to_schedule < round; next_to_schedule++) {
     point p = points[next_to_schedule];
     client->update(p.id, p.lon, p.lat, [] (bool success) {
@@ -113,21 +114,26 @@ void create_user_event(event_base *base) {
   evtimer_add(main_loop_ev, &zero_seconds);
 }
 
+void print_usage() {
+  cerr << "Usage ./update_benchmark key_prefix basic|smart|balanced "
+       << "split_level|set_count"
+       << endl;
+  exit(1);
+}
+
 RedisClientBase *create_redis(
     const char*arg, const string& key_prefix, int split_level) {
   if (strcmp(arg, "basic") == 0) {
     return new RedisClient(cluster_p, key_prefix);
   } else if (strcmp(arg, "smart") == 0) {
     return new SmartRedisClient(cluster_p, key_prefix, split_level);
+  } else if (strcmp(arg, "balanced") == 0) {
+    int set_count = split_level;
+    return new BalancedRedisClient(cluster_p, key_prefix, set_count);
   }
-  cerr << "Redis client should be basic or smart" << endl;
+  cerr << "Redis client should be basic or smart or balanced" << endl;
+  print_usage();
   return NULL;
-}
-
-void print_usage() {
-  cerr << "Usage ./update_benchmark key_prefix basic|smart split_level"
-       << endl;
-  exit(1);
 }
 
 int main(int argc, char **argv) {
