@@ -20,17 +20,16 @@ using RedisCluster::Cluster;
  * Point is stored into one of the sets based on its id.
  * When quering all of the sets need to be queried.
  *
- * It is not so easy to controll which set ends up on which redis node,
- * so set_count should be few times larger then the node count to
- * ensure balanced load.
- * TODO: force each set on its own redis node.
+ * Set count should be the same as the number of redis nodes because now we
+ * force each set on its own node. If set count is larger then this number
+ * redis client will end up in infinite loop.
  */
 class BalancedRedisClient : public RedisClientBase {
 public:
   BalancedRedisClient(
       typename Cluster<redisAsyncContext>::ptr_t cluster,
       std::string prefix,
-      int set_count);
+      size_t set_count);
 
   void update(
       const std::string& point_id,
@@ -49,6 +48,7 @@ private:
   static void redisRectangleCallback(
     typename Cluster<redisAsyncContext>::ptr_t cluster_p, void *r, void *data );
 
+  typedef std::pair<std::string, int> RedisNode; //host, port pair
 
   struct UpdateCallbackData {
     updateCallbackFn callbackFn_;
@@ -82,8 +82,9 @@ private:
 
   typename Cluster<redisAsyncContext>::ptr_t cluster_;
   std::string prefix_;
-  int set_count_;
+  size_t set_count_;
   std::string set_key_;
   std::vector<std::string> set_names_;
+  std::vector<RedisNode> redis_nodes_;
 };
 

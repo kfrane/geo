@@ -2,6 +2,7 @@
 #include <chrono>
 #include <signal.h>
 #include <event2/event.h>
+#include <algorithm>
 
 #include "slothash.h"
 
@@ -16,18 +17,29 @@ using RedisCluster::SlotHash;
 BalancedRedisClient::BalancedRedisClient(
             typename Cluster<redisAsyncContext>::ptr_t cluster,
             std::string prefix,
-            int set_count) :
+            size_t set_count) :
             cluster_(cluster),
             prefix_(prefix),
             set_count_(set_count),
             set_key_(prefix+std::string("set:")) {
-  for (int set_index = 0; set_index < set_count; set_index++) {
+  auto find_node = [=] (const std::string& key) -> RedisNode {
+    auto slotConn = cluster->getConnection(key);
+    auto redis_tcp = slotConn.second->c.tcp;
+    return RedisNode(redis_tcp.host, redis_tcp.port);
+  };
+
+  for (size_t set_index = 0; set_names_.size() < set_count; set_index++) {
     std::string set_name = set_key_ + std::to_string(set_index);
-    set_names_.push_back(set_name);
+    RedisNode node_name = find_node(set_name);
+    bool is_new_node = std::find(
+        redis_nodes_.begin(), redis_nodes_.end(), node_name) ==
+      redis_nodes_.end();
+    if (is_new_node) {
+      set_names_.push_back(set_name);
+      redis_nodes_.push_back(node_name);
+    }
   }
 }
-
-
 
 // declare a callback to process reply to redis command
 void BalancedRedisClient::redisUpdateCallback(

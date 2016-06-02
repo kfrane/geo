@@ -18,7 +18,8 @@ using namespace std;
  * Level 11 never has to split a query between multiple sets, it only happens
  * at level 15. The request rate drops from 7200 to 6200 req/s.
  *
- * If using balanced_redis_client with 10 sets 1577.07req/s is throughput.
+ * If using balanced_redis_client with 10 sets through put is 1577.07req/s.
+ * If using balanced_redis_client with 3 sets, throughput is 3700 req/s.
  */
 
 struct rectangle {

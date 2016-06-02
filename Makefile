@@ -40,6 +40,11 @@ geopoint_test: src/geopoint_test.cpp geohash.o geopoint.o
 generate_rectangles: src/generate_rectangles.cpp
 	$(CC) $(CFLAGS) $^ -o$@
 
+# Only for local testing
+local: redis_hello
+redis_hello: src/redis_hello.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) $< $(SYSLIB) -o$@
+
 .PHONY: clean
 
 clean:
