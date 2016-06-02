@@ -40,7 +40,7 @@ void SmartRedisClient::redisRectangleCallback(
   }
 
   assert (reply->type == REDIS_REPLY_ARRAY);
-  for (int i = 0; i < reply->elements; i+=2) {
+  for (size_t i = 0; i < reply->elements; i+=2) {
     // array consists of (id, hash) pairs.
     const char* curr_id = reply->element[i]->str;
     const char* curr_hash = reply->element[i+1]->str;

@@ -8,6 +8,7 @@
 
 #include "redis_client.h"
 #include "smart_redis_client.h"
+#include "balanced_redis_client.h"
 #include "redis_client_base.h"
 
 using namespace std;
@@ -16,6 +17,8 @@ using namespace std;
  * Able to make approximately 7300-7600 req/s when results count is <= 5.
  * Level 11 never has to split a query between multiple sets, it only happens
  * at level 15. The request rate drops from 7200 to 6200 req/s.
+ *
+ * If using balanced_redis_client with 10 sets 1577.07req/s is throughput.
  */
 
 struct rectangle {
@@ -80,7 +83,7 @@ Cluster<redisAsyncContext>::ptr_t cluster_p;
 RedisClientBase *client;
 size_t next_to_schedule = 0;
 size_t completed = 0;
-const size_t ROUND_SIZE = 100;
+const size_t ROUND_SIZE = 10;
 int total_returned = 0, total_in_area = 0;
 
 struct event* main_loop_ev;
@@ -143,21 +146,27 @@ void create_user_event(event_base *base) {
   evtimer_add(main_loop_ev, &zero_seconds);
 }
 
+void print_usage() {
+  cerr << "Usage ./rectangle_benchmark key_prefix basic|smart|balanced "
+       << "split_level|set_count"
+       << endl;
+  exit(1);
+}
+
 RedisClientBase *create_redis(
     const char*arg, const string& key_prefix, int split_level) {
   if (strcmp(arg, "basic") == 0) {
     return new RedisClient(cluster_p, key_prefix);
   } else if (strcmp(arg, "smart") == 0) {
     return new SmartRedisClient(cluster_p, key_prefix, split_level);
+  } else if (strcmp(arg, "balanced") == 0) {
+    int set_count = split_level;
+    return new BalancedRedisClient(cluster_p, key_prefix, set_count);
   }
-  cerr << "Redis client should be basic or smart" << endl;
-  return NULL;
-}
 
-void print_usage() {
-  cerr << "Usage ./rectangle_benchmark key_prefix basic|smart split_level"
-       << endl;
-  exit(1);
+  cerr << "Redis client should be basic or smart" << endl;
+  print_usage();
+  return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -173,17 +182,17 @@ int main(int argc, char **argv) {
     redis_client_type = argv[2];
   }
 
-  read_data(cin, points);
-  if (points.size() == 0) {
-    cout << "No valid queries in input" << endl;
-    return 0;
-  }
-
   int split_level = 11;
   if (argc > 3) {
     sscanf(argv[3], "%d", &split_level);
   }
 
+
+  read_data(cin, points);
+  if (points.size() == 0) {
+    cout << "No valid queries in input" << endl;
+    return 0;
+  }
 
   signal(SIGPIPE, SIG_IGN);
   // create libevent base

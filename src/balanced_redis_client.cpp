@@ -3,12 +3,15 @@
 #include <signal.h>
 #include <event2/event.h>
 
+#include "slothash.h"
+
 #include "balanced_redis_client.h"
 #include "geohash.h"
 
 using std::cout;
 using std::endl;
 using std::vector;
+using RedisCluster::SlotHash;
 
 BalancedRedisClient::BalancedRedisClient(
             typename Cluster<redisAsyncContext>::ptr_t cluster,
@@ -18,11 +21,11 @@ BalancedRedisClient::BalancedRedisClient(
             prefix_(prefix),
             set_count_(set_count),
             set_key_(prefix+std::string("set:")) {
-        for (int set_index = 0; set_index < set_count; set_index++) {
-          std::string set_name = set_key_ + std::to_string(set_index);
-          set_names_.push_back(set_name);
-        }
-      }
+  for (int set_index = 0; set_index < set_count; set_index++) {
+    std::string set_name = set_key_ + std::to_string(set_index);
+    set_names_.push_back(set_name);
+  }
+}
 
 
 
@@ -56,7 +59,7 @@ void BalancedRedisClient::redisRectangleCallback(
   }
 
   assert (reply->type == REDIS_REPLY_ARRAY);
-  for (int i = 0; i < reply->elements; i+=2) {
+  for (size_t i = 0; i < reply->elements; i+=2) {
     // array consists of (id, hash) pairs.
     const char* curr_id = reply->element[i]->str;
     const char* curr_hash = reply->element[i+1]->str;
@@ -81,7 +84,6 @@ void BalancedRedisClient::update(
   point_data << lon << " " << lat;
 
   UpdateCallbackData *callbackData = new UpdateCallbackData(callbackFn, 2);
-  // TODO: Use GETSET to delete the old value from set.
   AsyncHiredisCommand<>::Command(cluster_,
       point_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
@@ -92,7 +94,7 @@ void BalancedRedisClient::update(
 
   uint64_t hash;
   hash = GeoPoint::encode(lon, lat);
-  std::string my_set_key = set_key_ + GeoPoint::get_prefix(hash, set_count_);
+  std::string my_set_key = findMySet(point_id);
   AsyncHiredisCommand<>::Command(cluster_,
       my_set_key,                          // key accessed in current command
       redisUpdateCallback,                        // callback to process reply
@@ -116,28 +118,26 @@ void BalancedRedisClient::rectangle_query(
   vector <GeoPoint::Range> ranges;
   for (GeoHashBits geo_hash : geo_hashes) {
     GeoPoint::Range range = GeoPoint::to_range(geo_hash);
-    int old_len = ranges.size();
-    GeoPoint::to_ranges(ranges, range, set_count_);
-    int new_len = ranges.size();
-    if (new_len-old_len > 1) {
-     // cout << "Podijelio na " << new_len-old_len << " dijelova" << endl;
-    }
+    ranges.push_back(range);
   }
 
-  RectangleCallbackData *callbackData = new RectangleCallbackData(
-                                              callbackFn, ranges.size());
-  for (GeoPoint::Range score_range : ranges) {
-    assert (GeoPoint::get_prefix(score_range.first, set_count_) ==
-            GeoPoint::get_prefix(score_range.second, set_count_));
-    std::string my_set_key =
-      set_key_ + GeoPoint::get_prefix(score_range.first, set_count_);
-    AsyncHiredisCommand<>::Command(cluster_,
-        my_set_key,                           // key accessed in current command
-        redisRectangleCallback,             // callback to process reply
-        static_cast<void*>(callbackData),   // custom user data pointer
-        "ZRANGEBYSCORE %s %lld %lld WITHSCORES",
-        my_set_key.c_str(),
-        score_range.first,
-        score_range.second);
+  RectangleCallbackData *callbackData =
+    new RectangleCallbackData( callbackFn, ranges.size() * set_count_);
+  for (const GeoPoint::Range& score_range : ranges) {
+    for (const std::string& my_set_key : set_names_) {
+      AsyncHiredisCommand<>::Command(cluster_,
+          my_set_key,                           // key accessed in current command
+          redisRectangleCallback,             // callback to process reply
+          static_cast<void*>(callbackData),   // custom user data pointer
+          "ZRANGEBYSCORE %s %lld %lld WITHSCORES",
+          my_set_key.c_str(),
+          score_range.first,
+          score_range.second);
+    }
   }
+}
+
+std::string BalancedRedisClient::findMySet(const std::string& point_key) {
+  int key_hash = SlotHash::SlotByKey(point_key.c_str(), point_key.size());
+  return set_names_[key_hash % set_count_];
 }

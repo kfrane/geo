@@ -78,14 +78,12 @@ private:
     void call() { callbackFn_(success_, points_); }
   };
 
-
+  std::string findMySet(const std::string& point_key);
 
   typename Cluster<redisAsyncContext>::ptr_t cluster_;
   std::string prefix_;
   int set_count_;
   std::string set_key_;
   std::vector<std::string> set_names_;
-
-  static const int MAX_KEY_LEN = 50;
 };
 
