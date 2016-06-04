@@ -38,7 +38,10 @@ void SmartRedisClient::redisRectangleCallback(
     cout << "Reply error " << reply->str << endl;
     callbackData->success_ = false;
   }
-
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    std::cout << "Not array " << reply->type << endl
+              << strerror(errno) << endl;
+  }
   assert (reply->type == REDIS_REPLY_ARRAY);
   for (size_t i = 0; i < reply->elements; i+=2) {
     // array consists of (id, hash) pairs.

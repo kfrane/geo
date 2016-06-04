@@ -56,6 +56,14 @@ public:
   static void to_ranges(
       std::vector<Range>& ret, const Range& range, int split_level);
 
+  double distance(double lon1d, double lat1d) const;
+  void bound_radius(
+                    double radius,
+                    double& min_lon,
+                    double& max_lon,
+                    double& min_lat,
+                    double& max_lat) const;
+
   double getLongtitude() const { return lon_; }
   double getLatitude() const { return lat_; }
   std::string getId() const { return id_; }
@@ -66,6 +74,19 @@ public:
   static const GeoHashRange lat_range;
 
 private:
+  static double rad_deg(double radians) {
+    return radians / DEG_TO_RAD;
+  }
+
+  static double deg_rad(double deg) {
+    return deg * DEG_TO_RAD;
+  }
+
   double lon_, lat_;
   std::string id_;
+
+  // @brief The usual PI/180 constant
+  constexpr static double DEG_TO_RAD = 0.017453292519943295769236907684886;
+  // @brief Earth's quatratic mean radius for WGS-84
+  constexpr static double EARTH_RADIUS_IN_METERS = 6372797.560856;
 };

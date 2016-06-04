@@ -5,7 +5,7 @@ SYSLIB = -rdynamic -lhiredis -lpthread -levent
 REDIS_BASE_DIR = ../cpp-hiredis-cluster
 INCLUDES = -I$(REDIS_BASE_DIR)/include
 
-all: update_benchmark rectangle_benchmark generate_rectangles
+all: update_benchmark rectangle_benchmark radius_benchmark generate_rectangles generate_circles
 tests: geohash_test geopoint_test
 debug: CFLAGS += -DDEBUG -g
 debug: all
@@ -31,6 +31,9 @@ update_benchmark: src/update_benchmark.cpp redis_client.o smart_redis_client.o b
 rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o smart_redis_client.o balanced_redis_client.o geohash.o geopoint.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
+radius_benchmark: src/radius_benchmark.cpp redis_client.o smart_redis_client.o balanced_redis_client.o geohash.o geopoint.o
+	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
+
 geohash_test: src/geohash_test.cpp geohash.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
@@ -38,6 +41,9 @@ geopoint_test: src/geopoint_test.cpp geohash.o geopoint.o
 	$(CC) $(CFLAGS) $^ -o$@
 
 generate_rectangles: src/generate_rectangles.cpp
+	$(CC) $(CFLAGS) $^ -o$@
+
+generate_circles: src/generate_circles.cpp
 	$(CC) $(CFLAGS) $^ -o$@
 
 # Only for local testing

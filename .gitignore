@@ -4,7 +4,9 @@ rectangle_benchmark
 geohash_test
 geopoint_test
 generate_rectangles
+generate_circles
 redis_hello
+radius_benchmark
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
