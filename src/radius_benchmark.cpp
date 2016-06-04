@@ -10,6 +10,7 @@
 #include "smart_redis_client.h"
 #include "balanced_redis_client.h"
 #include "redis_client_base.h"
+#include "native_redis_client.h"
 
 using namespace std;
 
@@ -20,6 +21,7 @@ using namespace std;
  *
  * If using balanced_redis_client with 10 sets through put is 1577.07req/s.
  * If using balanced_redis_client with 3 sets, throughput is 3700 req/s.
+ * If using native_redis_client throughput is 18000 req/s.
  */
 
 struct circle {
@@ -114,6 +116,10 @@ size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
           }
           total_returned += results->size();
       //    cout << "Resylt size " << results->size() << endl;
+          for (GeoPoint curr_p : *results) {
+           // cout << curr_p.getId() << " " << curr_p.getLongtitude() << " " <<
+           //  curr_p.getLatitude() << endl;
+          }
           total_in_area += results->size(); // NOT NEEDED
           delete results;
           completed++;
@@ -140,7 +146,7 @@ void create_user_event(event_base *base) {
 }
 
 void print_usage() {
-  cerr << "Usage ./radius_benchmark key_prefix basic|smart|balanced "
+  cerr << "Usage ./radius_benchmark key_prefix basic|smart|balanced|native "
        << "split_level|set_count"
        << endl;
   exit(1);
@@ -155,6 +161,8 @@ RedisClientBase *create_redis(
   } else if (strcmp(arg, "balanced") == 0) {
     int set_count = split_level;
     return new BalancedRedisClient(cluster_p, key_prefix, set_count);
+  } else if (strcmp(arg, "native") == 0) {
+    return new NativeRedisClient(cluster_p, key_prefix);
   }
 
   cerr << "Redis client should be basic or smart" << endl;

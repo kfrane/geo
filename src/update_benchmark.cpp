@@ -10,8 +10,13 @@
 #include "smart_redis_client.h"
 #include "balanced_redis_client.h"
 #include "redis_client_base.h"
+#include "native_redis_client.h"
 
 using namespace std;
+
+/**
+ * Native reaches 26000 req/s.
+ */
 
 struct point {
   string id;
@@ -115,7 +120,7 @@ void create_user_event(event_base *base) {
 }
 
 void print_usage() {
-  cerr << "Usage ./update_benchmark key_prefix basic|smart|balanced "
+  cerr << "Usage ./update_benchmark key_prefix basic|smart|balanced|native "
        << "split_level|set_count"
        << endl;
   exit(1);
@@ -130,8 +135,10 @@ RedisClientBase *create_redis(
   } else if (strcmp(arg, "balanced") == 0) {
     int set_count = split_level;
     return new BalancedRedisClient(cluster_p, key_prefix, set_count);
+  } else if (strcmp(arg, "native") == 0) {
+    return new NativeRedisClient(cluster_p, key_prefix);
   }
-  cerr << "Redis client should be basic or smart or balanced" << endl;
+  cerr << "Redis client should be basic or smart or balanced or native" << endl;
   print_usage();
   return NULL;
 }
