@@ -141,9 +141,14 @@ size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
           if (completed == points.size()) {
             cout << endl << "About to call disconnect" << endl;
             cout << "Average # of returned points is "
-                 << total_returned / points.size() << endl
+                 << (double) total_returned / points.size() << endl
                  << "and average number of points in area "
-                 << total_in_area / points.size() << endl;
+                 << (double) total_in_area / points.size() << endl;
+
+            *log_stream << "Average # of returned points is "
+                 << (double)total_returned / points.size() << endl
+                 << "and average number of points in area "
+                 << (double)total_in_area / points.size() << endl;
             cluster_p->disconnect();
           }
         });

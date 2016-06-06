@@ -120,17 +120,17 @@ size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
   for (; next_to_schedule < round; next_to_schedule++) {
     circle p = points[next_to_schedule];
     client->radius_query(p.radius, p.lon, p.lat,
-        [=] (bool success, vector <GeoPoint> *results) {
+        [=] (bool success, vector <GeoPoint> *results, size_t points_retrieved) {
           if (success == 0) {
             cout << "Update error" << endl;
           }
-          total_returned += results->size();
+          total_returned += points_retrieved;
       //    cout << "Resylt size " << results->size() << endl;
           for (GeoPoint curr_p : *results) {
            // cout << curr_p.getId() << " " << curr_p.getLongtitude() << " " <<
            //  curr_p.getLatitude() << endl;
           }
-          total_in_area += results->size(); // NOT NEEDED
+          total_in_area += results->size();
           delete results;
           completed++;
           if (completed%100 == 0) {
@@ -139,9 +139,13 @@ size_t round = min(next_to_schedule+ROUND_SIZE, points.size());
           if (completed == points.size()) {
             cout << endl << "About to call disconnect" << endl;
             cout << "Average # of returned points is "
-                 << total_returned / points.size() << endl
+                 << (double) total_returned / points.size() << endl
                  << "and average number of points in area "
-                 << total_in_area / points.size() << endl;
+                 << (double) total_in_area / points.size() << endl;
+            *log_stream << "Average # of returned points is "
+                 << (double) total_returned / points.size() << endl
+                 << "and average number of points in area "
+                 << (double) total_in_area / points.size() << endl;
             cluster_p->disconnect();
           }
         });

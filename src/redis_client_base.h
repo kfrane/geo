@@ -11,6 +11,10 @@ class RedisClientBase {
 public:
   typedef std::function<void(bool)> updateCallbackFn;
   typedef std::function<void(bool, std::vector <GeoPoint> *)> queryCallbackFn;
+  typedef std::function<
+    void(bool, std::vector <GeoPoint> *, size_t points_retrieved)>
+    radiusCallbackFn;
+
 
   virtual void update(
       const std::string& point_id,
@@ -23,7 +27,7 @@ public:
       queryCallbackFn callbackFn) = 0;
 
   virtual void radius_query(
-      double radius, double lon, double lat, queryCallbackFn callbackFn) {
+      double radius, double lon, double lat, radiusCallbackFn callbackFn) {
     GeoPoint center_point(lon, lat, "");
     double min_lon, max_lon, min_lat, max_lat;
     center_point.bound_radius(radius, min_lon, max_lon, min_lat, max_lat);
@@ -41,6 +45,7 @@ public:
     rectangle_query(min_lon, max_lon, min_lat, max_lat,
       [callbackFn, lon, lat, radius]
       (bool success, std::vector <GeoPoint>* candidates) {
+      size_t points_in_rectangle = candidates->size();
     //  std::cout << "candidates size " << candidates->size() << std::endl;
       std::vector <GeoPoint>* ret = new std::vector<GeoPoint>();
       for (const GeoPoint& point : *candidates) {
@@ -49,7 +54,7 @@ public:
         }
       }
       delete candidates;
-      callbackFn(success, ret);
+      callbackFn(success, ret, points_in_rectangle);
     });
   }
 
