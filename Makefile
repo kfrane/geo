@@ -28,7 +28,7 @@ balanced_redis_client.o: src/balanced_redis_client.cpp src/balanced_redis_client
 native_redis_client.o: src/native_redis_client.cpp src/native_redis_client.h src/redis_client_base.h src/geohash.h src/geopoint.h
 	$(CC) -c $(CFLAGS) $(INCLUDES) $< $(SYSLIB)
 
-update_benchmark: src/update_benchmark.cpp redis_client.o smart_redis_client.o balanced_redis_client.o native_redis_client.o geohash.o geopoint.o
+update_benchmark: src/update_benchmark.cpp src/log_utility.h redis_client.o smart_redis_client.o balanced_redis_client.o native_redis_client.o geohash.o geopoint.o
 	$(CC) $(CFLAGS) $(INCLUDES) $^ $(SYSLIB) -o$@
 
 rectangle_benchmark: src/rectangle_benchmark.cpp redis_client.o smart_redis_client.o balanced_redis_client.o geohash.o geopoint.o

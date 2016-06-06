@@ -10,6 +10,7 @@
 #include "smart_redis_client.h"
 #include "balanced_redis_client.h"
 #include "redis_client_base.h"
+#include "log_utility.h"
 
 using namespace std;
 
@@ -28,6 +29,8 @@ using namespace std;
  * Balanced client:
  * With 3 sets, throughput is 5200 req/s.
  */
+
+ofstream* log_stream;
 
 struct rectangle {
   double lon_min, lon_max;
@@ -201,6 +204,7 @@ int main(int argc, char **argv) {
     cout << "No valid queries in input" << endl;
     return 0;
   }
+  log_stream = &init_log("results/", argc, argv);
 
   signal(SIGPIPE, SIG_IGN);
   // create libevent base
@@ -220,12 +224,19 @@ int main(int argc, char **argv) {
 
   end = chrono::system_clock::now();
   chrono::duration<double> elapsed_seconds = end-start;
-  cout << "Done with all updates in " << elapsed_seconds.count()
+  cout << "Done with all queries in " << elapsed_seconds.count()
     << "s which is " << (double)(points.size()) / elapsed_seconds.count()
     << "req/s" << endl;
+  *log_stream << "Done with all queries in " << elapsed_seconds.count()
+    << "s which is " << (double)(points.size()) / elapsed_seconds.count()
+    << "req/s" << endl
+    << "Queries #" << points.size() << endl;
+
 
   delete cluster_p;
   delete client;
   event_base_free(base);
+  log_stream->close();
+  delete log_stream;
   return 0;
 }
