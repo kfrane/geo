@@ -18,7 +18,7 @@ using namespace std;
  * actually in area.
  *
  * Basic client:
- * Throughput is 9990 req/s.
+ * Throughput is 11800 req/s.
  *
  * Smart client:
  * Able to make approximately 9300 req/s.

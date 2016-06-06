@@ -18,7 +18,7 @@ using namespace std;
  * Avg number of points in radius is 4.
  *
  * Basic:
- * 8100 req/s.
+ * 9800 req/s.
  *
  * Smart:
  * 6500 req/s.

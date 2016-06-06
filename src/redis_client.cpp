@@ -94,11 +94,11 @@ void RedisClient::rectangle_query(
   vector <GeoHashBits> geo_hashes = cover_rectangle(
       GeoPoint::lat_range, GeoPoint::lon_range,
       lat_min, lat_max, lon_min, lon_max);
+  vector <GeoPoint::Range> geo_ranges = GeoPoint::merge_geohashes(geo_hashes);
 
   RectangleCallbackData *callbackData = new RectangleCallbackData(
-                                              callbackFn, geo_hashes.size());
-  for (GeoHashBits geo_hash : geo_hashes) {
-    GeoPoint::Range score_range = GeoPoint::to_range(geo_hash);
+                                              callbackFn, geo_ranges.size());
+  for (const GeoPoint::Range& score_range: geo_ranges) {
     AsyncHiredisCommand<>::Command(cluster_,
         set_key_,                           // key accessed in current command
         redisRectangleCallback,             // callback to process reply
