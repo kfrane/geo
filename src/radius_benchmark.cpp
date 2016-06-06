@@ -15,13 +15,20 @@
 using namespace std;
 
 /**
- * Able to make approximately 7300-7600 req/s when results count is <= 5.
- * Level 11 never has to split a query between multiple sets, it only happens
- * at level 15. The request rate drops from 7200 to 6200 req/s.
+ * Avg number of points in radius is 4.
  *
- * If using balanced_redis_client with 10 sets through put is 1577.07req/s.
- * If using balanced_redis_client with 3 sets, throughput is 3700 req/s.
- * If using native_redis_client throughput is 18000 req/s.
+ * Basic:
+ * 8100 req/s.
+ *
+ * Smart:
+ * 6500 req/s.
+ *
+ * Balanced:
+ * 5400 req/s
+ *
+ * Native:
+ * 16800 req/s.
+ *
  */
 
 struct circle {
@@ -83,7 +90,7 @@ Cluster<redisAsyncContext>::ptr_t cluster_p;
 RedisClientBase *client;
 size_t next_to_schedule = 0;
 size_t completed = 0;
-const size_t ROUND_SIZE = 1;
+const size_t ROUND_SIZE = 10;
 int total_returned = 0, total_in_area = 0;
 
 struct event* main_loop_ev;

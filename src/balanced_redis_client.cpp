@@ -127,11 +127,7 @@ void BalancedRedisClient::rectangle_query(
       GeoPoint::lat_range, GeoPoint::lon_range,
       lat_min, lat_max, lon_min, lon_max);
 
-  vector <GeoPoint::Range> ranges;
-  for (GeoHashBits geo_hash : geo_hashes) {
-    GeoPoint::Range range = GeoPoint::to_range(geo_hash);
-    ranges.push_back(range);
-  }
+  vector <GeoPoint::Range> ranges = GeoPoint::merge_geohashes(geo_hashes);
 
   RectangleCallbackData *callbackData =
     new RectangleCallbackData( callbackFn, ranges.size() * set_count_);

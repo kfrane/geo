@@ -50,6 +50,14 @@ public:
 
   static Range to_range(const GeoHashBits& hash);
 
+  /**
+   * Converts each geohash representing an area to a HASH_BITS range.
+   * It also merges consecutive ranges.
+   * Returnes vector of Ranges.
+   */
+  static std::vector<Range> merge_geohashes(
+      const std::vector<GeoHashBits>& geohashes);
+
   /** Return Ranges where each hash in Range has the same prefix of len
    * 2*split_level.
    */

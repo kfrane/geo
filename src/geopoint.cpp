@@ -1,4 +1,5 @@
 #include <cmath>
+#include <algorithm>
 #include "geopoint.h"
 
 const GeoHashRange GeoPoint::lon_range = GeoHashRange(180, -180);
@@ -10,6 +11,45 @@ GeoPoint::Range GeoPoint::to_range(const GeoHashBits& hash) {
   uint64_t end = ((hash.bits+1) << missing_bits)-1;
   return {start, end};
 }
+
+std::vector<GeoPoint::Range> GeoPoint::merge_geohashes(
+      const std::vector<GeoHashBits>& geohashes) {
+  std::vector<GeoPoint::Range> ranges;
+  for (const GeoHashBits& geohash : geohashes) {
+    ranges.push_back(to_range(geohash));
+  }
+  std::sort(ranges.begin(), ranges.end());
+
+  std::vector<GeoPoint::Range> merged_ranges;
+  GeoPoint::Range last_range = ranges[0];
+  for (size_t range_index = 1; range_index < ranges.size(); range_index++) {
+    GeoPoint::Range current_range = ranges[range_index];
+    assert (current_range.first > last_range.second);
+    if (last_range.second+1 == current_range.first) {
+      // Expand last range
+      last_range.second = current_range.second;
+    } else {
+      merged_ranges.push_back(last_range);
+      last_range = current_range;
+    }
+  }
+  merged_ranges.push_back(last_range);
+  /*
+  if (merged_ranges.size() < ranges.size()) {
+    std::cout << merged_ranges.size() << " " << ranges.size() << std::endl;
+    for (GeoPoint::Range range : ranges) {
+      std::cout << "(" << range.first << " " << range.second << ") ";
+    }
+    std::cout << std::endl;
+    for (GeoPoint::Range range : merged_ranges) {
+      std::cout << "(" << range.first << " " << range.second << ") ";
+    }
+    std::cout << std::endl;
+  }
+  */
+  return merged_ranges;
+}
+
 
 
 void GeoPoint::to_ranges(std::vector<GeoPoint::Range>& ret,

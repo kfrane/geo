@@ -99,10 +99,10 @@ void SmartRedisClient::rectangle_query(
   vector <GeoHashBits> geo_hashes = cover_rectangle(
       GeoPoint::lat_range, GeoPoint::lon_range,
       lat_min, lat_max, lon_min, lon_max);
+  vector <GeoPoint::Range> global_ranges = GeoPoint::merge_geohashes(geo_hashes);
 
   vector <GeoPoint::Range> ranges;
-  for (GeoHashBits geo_hash : geo_hashes) {
-    GeoPoint::Range range = GeoPoint::to_range(geo_hash);
+  for (GeoPoint::Range range: global_ranges) {
     int old_len = ranges.size();
     GeoPoint::to_ranges(ranges, range, split_level_);
     int new_len = ranges.size();

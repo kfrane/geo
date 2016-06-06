@@ -14,12 +14,19 @@
 using namespace std;
 
 /**
- * Able to make approximately 7300-7600 req/s when results count is <= 5.
- * Level 11 never has to split a query between multiple sets, it only happens
- * at level 15. The request rate drops from 7200 to 6200 req/s.
+ * rectangle_sample.txt queries have 14 points returend in avg, and 3 points
+ * actually in area.
  *
- * If using balanced_redis_client with 10 sets through put is 1577.07req/s.
- * If using balanced_redis_client with 3 sets, throughput is 3700 req/s.
+ * Basic client:
+ * Throughput is 9990 req/s.
+ *
+ * Smart client:
+ * Able to make approximately 9300 req/s.
+ * Level 11 never has to split a query between multiple sets, it only happens
+ * at level 15. The request rate then drops.
+ *
+ * Balanced client:
+ * With 3 sets, throughput is 5200 req/s.
  */
 
 struct rectangle {
