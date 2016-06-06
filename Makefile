@@ -1,6 +1,6 @@
 CC	= g++
 
-CFLAGS = -std=c++11 -Wall
+CFLAGS = -std=c++11 -Wall -O2
 SYSLIB = -rdynamic -lhiredis -lpthread -levent
 REDIS_BASE_DIR = ../cpp-hiredis-cluster
 INCLUDES = -I$(REDIS_BASE_DIR)/include
@@ -57,4 +57,4 @@ redis_hello: src/redis_hello.cpp
 .PHONY: clean
 
 clean:
-	rm *.o update_benchmark rectangle_benchmark geohash_test
+	rm *.o update_benchmark rectangle_benchmark radius_benchmark geohash_test

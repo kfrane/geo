@@ -1,6 +1,7 @@
 # My binaries
 update_benchmark
 rectangle_benchmark
+radius_benchmark
 geohash_test
 geopoint_test
 generate_rectangles
