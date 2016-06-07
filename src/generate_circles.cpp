@@ -3,13 +3,10 @@
 #include <algorithm>
 #include <sstream>
 #include <random>
+#include <iomanip>
 
 using namespace std;
 
-/**
- * Basic client makes 8400 req/s when avg results count is 4.
- * Balanced client (with 3 sets) makes 1633 req/s on the same data set.
- */
 vector<string> &split(
           const string &s,
           char delim,
@@ -56,7 +53,7 @@ void read_data(istream& data, range& lon_range, range& lat_range, int& count) {
     lats.push_back(lat);
   }
   count = lons.size();
-  int k_min = max(10, int(0.001*lons.size()));
+  int k_min = max(10, int(0.01*lons.size()));
   if (lons.size() < 100) k_min = 0;
   int k_max = lons.size()-k_min-1;
   lon_range = range(kth(lons, k_min), kth(lons, k_max));
@@ -64,26 +61,23 @@ void read_data(istream& data, range& lon_range, range& lat_range, int& count) {
 }
 
 void generate_circles(
-                double lon_res,
-                double lat_res,
+                double mean,
+                double deviation,
                 range lon_range,
                 range lat_range,
                 int count) {
-  // cout << "lon res " << lon_res << endl;
   std::default_random_engine generator;
   std::uniform_real_distribution<double>
       lon_distribution(lon_range.first, lon_range.second);
   std::uniform_real_distribution<double>
       lat_distribution(lat_range.first, lat_range.second);
   std::normal_distribution<double>
-      radius_distribution(200, 400);
-
+      radius_distribution(mean, deviation);
 for (int i = 0; i < count; i++) {
     double lon_start = lon_distribution(generator);
     double lat_start = lat_distribution(generator);
     double radius;
-    for (radius = 0; radius < 1 || radius > 5000;
-        radius = radius_distribution(generator));
+    for (radius = 0; radius < 1; radius = radius_distribution(generator));
     cout << lon_start << "," << lat_start << ","
          << radius << endl;
   }
@@ -94,20 +88,28 @@ for (int i = 0; i < count; i++) {
  */
 int main(int argc, char **argv) {
   cin.sync_with_stdio(false);
+  std::cout << std::setprecision(10);
 
-  double expected_points = 4;
+  double mean = 50;
   if (argc > 1) {
-    sscanf(argv[1], "%lf", &expected_points);
+    sscanf(argv[1], "%lf", &mean);
   }
+
+  double deviation = 50;
+  if (argc > 2) {
+    sscanf(argv[2], "%lf", &deviation);
+  }
+
 
   range lon_range, lat_range;
   int count;
   read_data(cin, lon_range, lat_range, count);
-
-  double p = (double)expected_points / count;
+  std::cerr << lon_range.first << " " << lon_range.second << std::endl;
+  std::cerr << lat_range.first << " " << lat_range.second << std::endl;
+  count = 1000000;
   generate_circles(
-      (lon_range.second-lon_range.first) * sqrt(p),
-      (lat_range.second-lat_range.first) * sqrt(p),
+      mean,
+      deviation,
       lon_range,
       lat_range,
       count);

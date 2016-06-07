@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <random>
+#include <iomanip>
 
 using namespace std;
 
@@ -52,7 +53,7 @@ void read_data(istream& data, range& lon_range, range& lat_range, int& count) {
     lats.push_back(lat);
   }
   count = lons.size();
-  int k_min = max(10, int(0.001*lons.size()));
+  int k_min = max(10, int(0.01*lons.size()));
   if (lons.size() < 100) k_min = 0;
   int k_max = lons.size()-k_min-1;
   lon_range = range(kth(lons, k_min), kth(lons, k_max));
@@ -91,6 +92,7 @@ for (int i = 0; i < count; i++) {
  */
 int main(int argc, char **argv) {
   cin.sync_with_stdio(false);
+  std::cout << std::setprecision(10);
 
   double expected_points = 4;
   if (argc > 1) {
@@ -100,6 +102,8 @@ int main(int argc, char **argv) {
   range lon_range, lat_range;
   int count;
   read_data(cin, lon_range, lat_range, count);
+  std::cerr << lon_range.first << " " << lon_range.second << std::endl;
+  std::cerr << lat_range.first << " " << lat_range.second << std::endl;
 
   double p = (double)expected_points / count;
   generate_rectangles(
@@ -107,5 +111,5 @@ int main(int argc, char **argv) {
       (lat_range.second-lat_range.first) * sqrt(p),
       lon_range,
       lat_range,
-      count);
+      1000000);
 }
