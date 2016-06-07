@@ -202,12 +202,12 @@ int main(int argc, char **argv) {
     sscanf(argv[3], "%d", &split_level);
   }
 
-
   read_data(cin, points);
   if (points.size() == 0) {
     cout << "No valid queries in input" << endl;
     return 0;
   }
+
   log_stream = &init_log("results/", argc, argv);
 
   signal(SIGPIPE, SIG_IGN);
