@@ -1,12 +1,25 @@
 #!/bin/bash
 
 # Settings
-REDIS_SRC=~/redis-3.2.0-rc3/src
+REDIS_SRC=~/redis-3.2.0/src
 PORT=30000
 TIMEOUT=2000
-NODES=6
+NODES=4
 REPLICAS=1
 APPEND_ONLY=no
+
+MY_IP=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
+
+HOSTS='192.168.201.20 192.168.201.16'
+ALL_HOSTS=''
+for host in $HOSTS; do
+  CURR_PORT=$PORT
+  ENDPORT=$((PORT+NODES))
+  while [ $((CURR_PORT < ENDPORT)) != "0" ]; do
+    CURR_PORT=$((CURR_PORT+1))
+    ALL_HOSTS=$ALL_HOSTS' '$host:$CURR_PORT
+  done
+done
 
 # You may want to put the above config parameters into config.sh in order to
 # override the defaults without modifying this script.
@@ -31,12 +44,7 @@ fi
 
 if [ "$1" == "create" ]
 then
-    HOSTS=""
-    while [ $((PORT < ENDPORT)) != "0" ]; do
-        PORT=$((PORT+1))
-        HOSTS="$HOSTS 127.0.0.1:$PORT"
-    done
-    $REDIS_SRC/redis-trib.rb create --replicas $REPLICAS $HOSTS
+    $REDIS_SRC/redis-trib.rb create --replicas $REPLICAS $ALL_HOSTS
     exit 0
 fi
 
