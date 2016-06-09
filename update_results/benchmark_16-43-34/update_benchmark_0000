@@ -1,0 +1,3 @@
+./update_benchmark 5M:bla:native4: native 
+Done with all updates in 15.3032s which is 32672.9req/s
+Updates #500000

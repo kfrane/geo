@@ -1,0 +1,5 @@
+./rectangle_benchmark 5M:new:smart: smart 
+Average # of returned points is 3048.59
+and average number of points in area 793.077
+Done with all queries in 8.50122s which is 117.63req/s
+Queries #1000

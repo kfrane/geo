@@ -1,0 +1,5 @@
+./radius_benchmark 5M:new:native: native 
+Average # of returned points is 806.09
+and average number of points in area 806.09
+Done with all queries in 33.4441s which is 8.97019req/s
+Queries #300

@@ -1,0 +1,1 @@
+10000 4 5M_huge_rectangles.txt ./rectangle_benchmark 5M:balanced:beter: balanced 10

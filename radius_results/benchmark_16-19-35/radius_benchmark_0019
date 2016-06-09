@@ -1,0 +1,5 @@
+./radius_benchmark 5M:new:basic: basic 
+Average # of returned points is 2329.5
+and average number of points in area 471.087
+Done with all queries in 37.1705s which is 8.07092req/s
+Queries #300

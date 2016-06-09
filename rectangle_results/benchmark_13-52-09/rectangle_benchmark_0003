@@ -1,0 +1,5 @@
+./rectangle_benchmark 5M:balanced:best: balanced 12 
+Average # of returned points is 3482.37
+and average number of points in area 927.481
+Done with all queries in 174.381s which is 57.3456req/s
+Queries #10000

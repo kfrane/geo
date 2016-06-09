@@ -1,0 +1,1 @@
+500000 1 5M_data.txt ./update_benchmark 5M:bla:balanced1: balanced

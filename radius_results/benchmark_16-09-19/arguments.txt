@@ -1,0 +1,1 @@
+100000 8 5M_50_50_circles.txt ./radius_benchmark 5M:balanced:best: balanced 12

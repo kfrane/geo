@@ -1,0 +1,3 @@
+./update_benchmark 5M:bla:basic1: basic 
+Done with all updates in 9.9019s which is 50495.4req/s
+Updates #500000

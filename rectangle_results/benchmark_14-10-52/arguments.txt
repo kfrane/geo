@@ -1,0 +1,1 @@
+100000 4 5M_small_rectangles.txt ./rectangle_benchmark 5M:new:basic: basic

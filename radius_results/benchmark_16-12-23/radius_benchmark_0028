@@ -1,0 +1,5 @@
+./radius_benchmark 5M:new:smart: smart 
+Average # of returned points is 42.7111
+and average number of points in area 8.77819
+Done with all queries in 27.8058s which is 1114.87req/s
+Queries #31000

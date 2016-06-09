@@ -1,0 +1,3 @@
+./radius_benchmark 5M:new:smart: smart 
+Average # of returned points is 7614.49
+and average number of points in area 1755.63

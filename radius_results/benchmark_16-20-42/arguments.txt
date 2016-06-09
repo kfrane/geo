@@ -1,0 +1,1 @@
+1000 4 5M_500_500_circles.txt ./radius_benchmark 5M:new:native: native

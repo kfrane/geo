@@ -1,0 +1,5 @@
+./radius_benchmark 5M:test:basic: basic 
+Average # of returned points is 0
+and average number of points in area 0
+Done with all queries in 0.101683s which is 9834.52req/s
+Queries #1000

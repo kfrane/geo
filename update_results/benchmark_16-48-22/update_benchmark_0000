@@ -1,0 +1,3 @@
+./update_benchmark 5M:bla:balanced1: balanced 
+Done with all updates in 11.0108s which is 45410.2req/s
+Updates #500000
