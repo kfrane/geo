@@ -1,0 +1,112 @@
+\documentclass[times, utf8, diplomski]{fer}
+\usepackage{booktabs}
+\newcommand{\bplus}{B\textsuperscript{+}}
+\newcommand{\rstar}{R\textsuperscript{*}}
+
+\begin{document}
+
+% TODO: Navedite broj rada.
+\thesisnumber{000}
+
+% TODO: Navedite naslov rada.
+\title{System for tracking vehicle locations in real time}
+
+% TODO: Navedite vaše ime i prezime.
+\author{Arthur Dent}
+
+\maketitle
+
+% Ispis stranice s napomenom o umetanju izvornika rada. Uklonite naredbu \izvornik ako želite izbaciti tu stranicu.
+\izvornik
+
+% Dodavanje zahvale ili prazne stranice. Ako ne želite dodati zahvalu, naredbu ostavite radi prazne stranice.
+\zahvala{}
+
+\tableofcontents
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% --------------INTRODUCTION-------------------------------------------------------------------------------------------------
+\chapter{Introduction}
+Vehicle location is a multidimensional data point, it can contain up to three dimensions of spatial data and even one dimension of temporal data. Dataset is comprised of many data points and can be either static or live -- in terms of supporting updates of vehicle locations. Of course, data is not worth anything if it can't be queried. Some common queries can be: what points are contained in given rectangle, or even more general in an arbitrary polygon. A query can be ask what points are contained within certain radius of a given point, but then another question arises -- how is distance defined in this space. A natural assumption is that the points are on planet Earth, but even Earth can be modelled in many ways, as a perfect sphere or as an ellipsoid, each one suitable for a different application in life. If temporal dimension is present then all of these queries can be appended with time interval to return only the points that are happened within that time.
+
+% Another possibility is to add information about road positions and then try to match each vehicle to the closest point on the road. This means that a polygon query could be done in 
+
+\section{Motivation}
+Spatial and spatio-temporal data sets are growing rapidly. Consider these spatio-temporal data sets: Facebook or Foursquare with their check-ins, or photos on Instagram. These are all live datasets because queries and updates happen concurrently. There are also examples of static data sets such as data collected by Telecom providers -- a data point for each time a user's phone contacted the tower. This dataset is not live and could be used to perform analytics, usually in a MapReduce system, which has much different requirements on the design of the system.
+
+Initial inspiration for the problem is Uber and similar applications. They have a large number of vehicles that update their location every few seconds. Each user's phone shows vehicles that are in a relatively small area of the map which gives a pretty clear picture of what the most relevant queries could be. Note that this is not a spatio-temporal dataset because only the last location of a vehicle is important, although one could easily imagine the version where the history of locations is stored and queried.
+
+\section{Problem definition and constraints}
+Let us define the problem more precisely. Each vehicle has a unique vehicle id and location. Location is encoded in a standard geographic coordinate system, as longitude and latitude pairs. Longitude is in [-180, 180] range and latitude [-90, 90].
+
+Updating a location can be referred as \emph{update $(vehicle\_id, longitude, latitude$)}.
+
+The simplest possible query is to find a list of vehicles that are within a given rectangle, and is referred as
+$$rectangle\_query (longitude\_min, longitude\_max, latitude\_min, latitude\_max)$$
+A point with its longitude and latitude is inside a given rectangle iff $longitude\_min <= longitude <= longitude\_max$ and $latitude\_min <= latitude <= latitude\_max$.
+
+Another interesting query is to search for points within certain distance of a given point.  Let's refer to this query as
+$$radius\_query (longitude, latitude, radius)$$
+
+Notice that the rectangle query was defined in a general way, it could be applied to any two dimensional data set, but this query needs a definition of distance between two points. We will use the simplest Earth model, a perfect sphere with quadratic mean radius of 6372 km. This choice is acceptable because distances should be fairly small and precise geometrical calculations are not mission critical. In turn, this should make geometry calculations as simple and as fast as possible.
+
+Number of vehicles and users in this system is not defined in advance but is expected to be large so the requirement is that the system shouldn't be constrained by only one computer, i.e. must be scalable. Persistency of the data is not important because all of the data is only relevant for a short period of time, which isn't good enough reason to further complicate the system with persistence considerations. Also, if persistence is needed it can be achieved by another system which can be developed independently from this one and will not be studied in this thesis. 
+
+Consistency - eventual - not 100\% sure?
+
+\chapter{Background}
+Historically, relational databases (RDBMs) have been the most popular storage system, and still are today. Geographical data and the need to store and query it has also been present in computer science for a long time. This is why most of the solutions were developed on top of relational RDBMS. The most important indexing data structure in RDBMs are B- and \bplus-trees and they work very well with one dimensional data. Those trees then formed the basis of R- and \rstar-trees which became the standard for spatial queries in RDBMs because this design enabled great interoperability with existing RDBMs.
+
+RDBMs have trouble in keeping up with the massive data growth in recent years mainly because of its scalability issues. This is why there has been a rise of NoSql databases that are designed to scale much better. This of course comes with a cost of supporting only a fraction of features that RDBMs support and often lack the same consistency guarantees. To improve on those basic scalability issues it is necessary to completely move from RDBMs to distributed storage systems even though that means that classical approaches won't work.
+
+\chapter{Conclusion}
+Conclusion.
+
+\bibliography{literatura}
+\bibliographystyle{fer}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% ----------------------------------Summary------------------------------------------------------
+\begin{sazetak}
+Sažetak na hrvatskom jeziku.
+
+\kljucnerijeci{Ključne riječi, odvojene zarezima.}
+\end{sazetak}
+
+% TODO: Navedite naslov na engleskom jeziku.
+\engtitle{Title}
+\begin{abstract}
+Abstract.
+
+\keywords{Keywords.}
+\end{abstract}
+
+\end{document}
