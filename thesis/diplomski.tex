@@ -70,7 +70,23 @@ Consistency - eventual - not 100\% sure?
 \chapter{Background}
 Historically, relational databases (RDBMs) have been the most popular storage system, and still are today. Geographical data and the need to store and query it has also been present in computer science for a long time. This is why most of the solutions were developed on top of relational RDBMS. The most important indexing data structure in RDBMs are B- and \bplus-trees and they work very well with one dimensional data. Those trees then formed the basis of R- and \rstar-trees which became the standard for spatial queries in RDBMs because this design enabled great interoperability with existing RDBMs.
 
-RDBMs have trouble in keeping up with the massive data growth in recent years mainly because of its scalability issues. This is why there has been a rise of NoSql databases that are designed to scale much better. This of course comes with a cost of supporting only a fraction of features that RDBMs support and often lack the same consistency guarantees. To improve on those basic scalability issues it is necessary to completely move from RDBMs to distributed storage systems even though that means that classical approaches won't work.
+RDBMs have trouble in keeping up with the massive data growth in recent years mainly because of its scalability issues. This is why there has been a rise of NoSql databases that are designed to scale much better. This of course comes with a cost of supporting only a fraction of features that RDBMs support and often lack the same consistency guarantees. To improve on those basic scalability issues it is necessary to completely move from RDBMs to distributed storage systems even though that means that classical approaches such as \rstar-trees won't work.
+
+\section{Traditional solutions}
+Lets make a step back and briefly describe the traditional solutions in RDBMS -- R-tree \cite{rtree} and its improvement \rstar-tree \cite{rstar}.
+
+R-tree is a height-balanced tree similar to a B-tree with every node except root containing between $m$ and $M$ records. $M$ is chosen to store the largest possible number of records before it grows to big to fit inside a single disk page. Every record contains information about minimal bounding box $I$ it is "responsible" for. This means that all the data in its subtree is within this bounding rectangle $I$, but that doesn't mean that some other node doesn't contain any points from this area. Bounding box can be represented as $I = (I_x, I_y)$ where $I_x$ and $I_y$ are intervals $[a, b]$ defining what interval on $x$ and $y$ axes current record contains. Records in non-leaf nodes contain minimal bounding box of its subtree. Leaf nodes contain pointers to actual geometrical objects stored, but minimal bounding box is also computed and stored in them.
+
+The most basic search query is to search for points within a given rectangle $R$. Search starts from the root node and recursively traverses the tree but only to nodes whose bounding box $B$ intersects with $R$. If $R$ completely contains $B$ than whole subtree should be returned, otherwise search continues in all of the children nodes.
+
+Inserting a new point is similar to search. New record is always inserted in the leaf node. If a node gets too big it has to be split and splits propagate up the tree. There are many heuristics on how to choose the appropriate leaf node to insert a new record. R-tree, at each level, always chooses the node which needs the least enlargement to fit a new point. Splitting a node also employs heuristics because there are $2^M-1$ combinations to split it.
+
+\rstar-tree improves on the R-tree by introducing better heuristics to split a node and to find the best node when inserting a new point.
+
+Estimating the complexity of inserting and search isn't easy, but the main idea is that the search algorithm on average won't need to retrieve many data points that are not inside the query box.
+
+\section{Geohash}
+
 
 \chapter{Conclusion}
 Conclusion.
