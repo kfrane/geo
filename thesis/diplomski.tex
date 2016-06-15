@@ -3,6 +3,9 @@
 \newcommand{\bplus}{B\textsuperscript{+}}
 \newcommand{\rstar}{R\textsuperscript{*}}
 
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
 \begin{document}
 
 % TODO: Navedite broj rada.
@@ -86,7 +89,57 @@ Inserting a new point is similar to search. New record is always inserted in the
 Estimating the complexity of inserting and search isn't easy, but the main idea is that the search algorithm on average won't need to retrieve many data points that are not inside the query box.
 
 \section{Geohash}
+Geohashing is a method of transforming two dimensional data into one dimension such that the points that are close in the original space are usually close in the transformed space.
 
+Input to the geohash function is a point on the map and the output is a bit string of arbitrary length -- greater length means greater precision. Construction works by repeatedly splitting the input space in half and output a $0$ if in left half and $1$ otherwise, in each step alternating between splitting vertically or horizontally.
+
+Let's give an example of how to encode a point in Beijing $116^{\circ}23'$ E $39^{\circ}55'$ N. It is easier to work with if converted to more appropriate form $(116.38, 39.92)$. 
+
+\begin{center}
+\begin{tabular}{ |c|l|l|l| } 
+	\hline
+	Precision & Longitude range & Latitude range & Geohash \\
+	\hline
+	0 & $[-180, 180]$ & $[-90, 90]$ & -- \\ 
+	1 & $[0, 180]$ & $[-90, 90]$ & 1 \\ 
+	2 & $[0, 180]$ & $[0, 90]$ & 11 \\ 
+	3 & $[90, 180]$ & $[0, 90]$ & 111 \\ 
+	4 & $[90, 180]$ & $[0, 45]$ & 1110 \\ 
+	5 & $[90, 135]$ & $[0, 45]$ & 11100 \\ 
+	6 & $[90, 135]$ & $[22.5, 45]$ & 111001 \\ 
+	7 & $[112.5, 135]$ & $[22.5, 45]$ & 1110011 \\ 
+	8 & $[112.5, 135]$ & $[33.75, 45]$ & 11100111 \\ 
+	9 & $[112.5, 123.75]$ & $[33.75, 45]$ & 111001110 \\ 
+	10 & $[112.5, 123.75]$ & $[39.375, 45]$ & 1110011101 \\ 
+	11 & $[112.5, 118.125]$ & $[39.375, 45]$ & 11100111010 \\ 
+	12 & $[112.5, 118.125]$ & $[39.375, 42.1875]$ & 111001110100 \\ 
+	13 & $[115.3125, 118.125]$ & $[39.375, 42.1875]$ & 1110011101001 \\ 
+	14 & $[115.3125, 118.125]$ & $[39.375, 40.78125]$ & 11100111010010 \\ 
+	\hline
+\end{tabular}
+\end{center}
+
+The first column shows longitude range that the current geohash represents and the second column shows the same thing for latitude. The process starts by splitting the longitude range in half and since the point has longitude larger than zero, bit 1 is appended. In the next step the same happens for latitude, and then the algorithm continues to alternate between splitting longitude and latitude ranges. The odd indexed bits are result of splitting by longitude, and even indexed bits are result of splitting by latitude. With every added bit of precision one of the range's size splits in half, which means that geohash always represents a rectangle.
+
+It is now pretty obvious that two geohashes which have a common prefix $P$ are within the rectangle that is represented by that prefix $P$. This is why we say that geohashing preserves \emph{locality}. Note, that if two points are close, it doesn't mean that they will have a common prefix at all. For example, two points that are very close to each other, but are at the different sides of the prime meridian will have a different first bit, and therefore no prefix in common. This is something that needs to be paid attention at when designing geohash algorithms.
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{z_curve}
+\caption{Z-order curve with precision 4 \cite {spatiotemporal}}
+\label{fig:zcurve}
+\end{figure}
+
+Figure \ref{fig:zcurve} shows all geohashes with precision 4, sorted and plotted with lines drawn between neighbouring elements. It is a mathematical object called z-order curve \cite{zcurve} and it appears at any chosen precision.
+
+In order to be able to answer a rectangle query it is necessary to have an algorithm that can cover an arbitrary rectangle with geohashes. This is known as a rectangle coverage problem. One goal is to use as few geohashes as possible and the other goal is to over cover the smallest possible area. If the second goal didn't exist, the solution would always be to use an empty geohash because it covers every rectangle. If we wanted to perfectly cover the rectangle, it might happen that infinite number of geohashes is required. The following simple algorithm will provide a solution with respect to both goals.
+
+The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all 8 neighbouring geohashes and return them with the central geohash. All of those geohashes will have the same precision. All that is left is to find the largest precision that guarantees that the whole rectangle gets covered. The condition in one dimension, e.g. longitude, at certain precision level is that $2*W >= L$ where $W$ is length of longitude side of rectangle and $L$ length of geohash longitude range. If that condition holds it means that the central geohash and it's left and right neighbour cover this longitude range. When constructing the central geohash, with each added bit, this condition must be checked. If it doesn't hold, than the last bit must be removed and the algorithm stops.
+
+This approach returns 9 geohashes, but it might happen that not all of them even intersect the original rectangle, so those can be ommited. It turns out if the returned geohashes are sorted, then many of the neighbouring elements will differ only by one. This start to make sense if you take a look at Figure \ref{fig:zcurve} where you can see how the consecutive geohashes are ordered on the map -- very often two consecutive geohashes are neighbours in one of the 8 directions which is also the pattern of the returned geohashes. Instead of returning a list of geohashes, we can return a list of geohash ranges that cover the rectangle. Empirically, this resulting list of ranges usually has two or three elements which is much better than 9 elements in the original list.
+
+\section{Key-value stores}
+Key-value stores are non relational databases.
+As already stated geohashes provide a way to map two dimensional data into one dimension while preserving locality. 
 
 \chapter{Conclusion}
 Conclusion.
