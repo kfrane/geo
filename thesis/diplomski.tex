@@ -1,5 +1,6 @@
 \documentclass[times, utf8, diplomski]{fer}
 \usepackage{booktabs}
+
 \newcommand{\bplus}{B\textsuperscript{+}}
 \newcommand{\rstar}{R\textsuperscript{*}}
 
@@ -139,8 +140,19 @@ This approach returns 9 geohashes, but it might happen that not all of them even
 
 \section{Key-value stores}
 Key-value stores are non relational databases.
-As already stated geohashes provide a way to map two dimensional data into one dimension while preserving locality. 
+As mentioned before geohashes provide a way to map two dimensional data into one dimension while preserving locality. It was also showed how to cover a rectangle with only few geohash ranges. This means that the system has to be able to retrieve all geohashes from a certain range. If all geohashes are stored in a sorted set, it is possible to find the first element from the range and iterate through set until the end of the range.
 
+This is where distributed key-value stores come to play. The criteria is that this data store is able to store keys in some sort of a sorted manner. One of the initial requests is that persistence is optional, and real time performance is more important. That's why a \emph{distributed in-memory database} is the best solution.
+
+In few other relevant papers where they built spatial \cite{spatialindex} and spatio-temporal \cite{spatiotemporal} distributed indexes, they used HBase and Accumulo both based on Google's BigTable implementation. We didn't go with that choice because those are not in-memory databases.
+
+We chose \emph{Redis} which is an in-memory key-value store with support for many different data types, and one of them is an ordered set called \emph{ZSET}. Originally Redis wasn't a distributed database, but in the past few years Redis Cluster was developed. Redis Cluster shards the data based on its key, but it can not shard within a single key which is needed because we would like to store all the geohashes inside a single key of type ZSET. This means that we will have to handle this part manually, by creating multiple ZSET keys and querying the appropriate ones.
+
+ZSET orders elements by their score, which is a 64-bit floating point number that can store integer values without the loss of precision, only if value is in range $[-2^{53}, 2^{53}]$. This score will be used to store geohash values with \emph{52 bit precision}. Those 52 bits are more than enough -- latitude resolution with 26 bits is $180^{\circ}/2^{26} \approx 2.6^{\circ}*10^{-6}$, or about 10 cm. Along with score, each element can store a string value called \emph{member}. It will be used to store a vehicle id.
+
+% Deliberately not explaining GET/SET.
+
+The main question is how to shard the sorted set and be able to do updates and answer rectangle queries efficiently. The next two chapters will describe the two approaches that were implemented.
 \chapter{Conclusion}
 Conclusion.
 
