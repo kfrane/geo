@@ -167,6 +167,11 @@ Downside is that $P$ has to be chosen in advance. If it has to be changed later,
 % What about updates?
 
 \chapter {Vehicle id sharding}
+Another idea is to decide on the number of sorted sets $S$ and define a mapping between vehicle id and a set it belongs to. Each set stores a portion of data, but there is no spatial locality within a single set as was the case with prefix sharding. To get the best performance it is important for sets to be approximately the same size, this is why hash of vehicle id modulo $S$ is used for mapping. The exact hash function used is the same one that Redis uses to map keys to slots.
+
+Updating a point location is simple, use the hash of vehicle id to find the set it maps to and add it to the set. Queries are also simple to answer because the same algorithm that is used on a single set now needs to be applied to each of the $S$ sets. Results are then merged and returned to the client. The downside is that each query needs to do the same operations with all of the $S$ sets which means $S$ times more queries to Redis than with a single key implementation.
+
+The upside with this approach is that all nodes should have equal load, no matter what the spatial distribution of points or queries look like. Query response time and throughput should be better than a single key implementation, but the results won't be noticeable if queries are small because there is overhead to query each set and merge the results, and some sets might return zero results which only wastes time without any gain.
 
 \chapter {Design and implementation}
 \section {Redis geo features}
