@@ -130,13 +130,7 @@ It is now pretty obvious that two geohashes which have a common prefix $P$ are w
 \label{fig:zcurve}
 \end{figure}
 
-Figure \ref{fig:zcurve} shows all geohashes with precision 4, sorted and plotted with lines drawn between neighbouring elements. It is a mathematical object called z-order curve \cite{zcurve} and it appears at any chosen precision.
-
-In order to be able to answer a rectangle query it is necessary to have an algorithm that can find geohashes that cover an arbitrary rectangle completely. This is known as a rectangle coverage problem. One goal is to use as few geohashes as possible and the other goal is to "over cover" the smallest possible area. If the second goal didn't exist, the solution would always be to use an empty geohash because it covers every rectangle. If we wanted to perfectly cover the rectangle, it might happen that infinite number of geohashes is required. The following simple algorithm will provide a solution with respect to both goals.
-
-The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all 8 neighbouring geohashes and return them with the central geohash. All of those geohashes will have the same precision. All that is left is to find the largest precision that guarantees that the whole rectangle gets covered. The condition in one dimension, e.g. longitude, at certain precision level is that $2*W >= L$ where $W$ is length of longitude side of rectangle and $L$ length of geohash longitude range. If that condition holds it means that the central geohash and it's left and right neighbour cover this longitude range. When constructing the central geohash, with each added bit, this condition must be checked. If it doesn't hold, than the last bit must be removed and the algorithm stops.
-
-This approach returns 9 geohashes, but it might happen that not all of them even intersect the original rectangle, so those can be omitted. It turns out if the returned geohashes are sorted, then many of the neighbouring elements will differ only by one. This start to make sense if you take a look at Figure \ref{fig:zcurve} where you can see how the consecutive geohashes are ordered on the map -- very often two consecutive geohashes are neighbours in one of the 8 directions which is also the pattern of the returned geohashes. Instead of returning a list of geohashes, we can return a list of geohash ranges that cover the rectangle. Empirically, this resulting list of ranges usually has two or three elements which is much better than 9 elements in the original list.
+Figure \ref{fig:zcurve} shows all geohashes with precision 4, sorted and plotted with lines drawn between neighbouring elements. It is a mathematical object called z-order curve \cite{zcurve} and it appears at any chosen precision. It is also a good way to visualise how geohasing preserves locality.
 
 \section{Key-value stores}
 Key-value stores are non relational databases.
@@ -148,14 +142,29 @@ In few other relevant papers where they built spatial \cite{spatialindex} and sp
 
 We chose \emph{Redis} which is an in-memory key-value store with support for many different data types, and one of them is an ordered set called \emph{ZSET}. Originally Redis wasn't a distributed database, but in the past few years Redis Cluster was developed. Redis Cluster shards the data based on its key, but it can not shard within a single key which is needed because we would like to store all the geohashes inside a single key of type ZSET. This means that we will have to handle this part manually, by creating multiple ZSET keys and querying the appropriate ones.
 
-ZSET orders elements by their score, which is a 64-bit floating point number that can store integer values without the loss of precision, only if value is in range $[-2^{53}, 2^{53}]$. This score will be used to store geohash values with \emph{52 bit precision}. Those 52 bits are more than enough -- latitude resolution with 26 bits is $180^{\circ}/2^{26} \approx 2.6^{\circ}*10^{-6}$, or about 10 cm. Along with score, each element can store a string value called \emph{member}. It will be used to store a vehicle id.
+ZSET orders elements by their score, which is a 64-bit floating point number that can store integer values without the loss of precision only if value is in range $[-2^{53}, 2^{53}]$. This score will be used to store geohash values with \emph{52 bit precision}. Those 52 bits are more than enough -- latitude resolution with 26 bits is $180^{\circ}/2^{26} \approx 2.6^{\circ}*10^{-6}$, or about 10 cm. Along with score, each element can store a string value called \emph{member}. It will be used to store a vehicle id.
 
-% Deliberately not explaining GET/SET.
+Even though all point data is contained within each element of sorted set, some implementations will require an efficient way to lookup a vehicle location by its id. This is achieved using standard get and set methods to get or set a value on specified key. As previously said, Redis Cluster automatically shards data by its key, so this information doesn't have to be manually sharded as with ZSET.
 
-The main question is how to shard the sorted set and be able to do updates and answer rectangle queries efficiently. The next two chapters will describe the two approaches that were implemented.
+\chapter {Algorithms}
+In order to be able to answer a rectangle query it is necessary to have an algorithm that can find geohashes that cover an arbitrary rectangle completely. This is known as a rectangle coverage problem. One goal is to use as few geohashes as possible and the other goal is to "over cover" the smallest possible area. If the second goal didn't exist, the solution would always be to use an empty geohash because it covers every rectangle. On the other side, if we wanted to perfectly cover the rectangle, it might happen that infinite number of geohashes are required.
 
+To do this with respect to both goals we explain a simple algorithm in the section \ref{rect_cov}.
+Section \ref{single_key} explains how to use the list of ranges that the algorithm produces to make a simple version of the system that stores all the points within a single set. Sections \ref{prefix} and \ref{vehicle_id} present two solutions on how to shard the data into multiple sorted sets to achieve scalability and better performance.
 
-\chapter {Prefix sharding}
+\section {Rectangle coverage} \label {rect_cov}
+The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all 8 neighbouring geohashes and return them with the central geohash. All of those geohashes will have the same precision. All that is left is to find the largest precision that guarantees that the whole rectangle gets covered. The condition in one dimension, e.g. longitude, at certain precision level is that $2*W >= L$ where $W$ is length of longitude side of rectangle and $L$ length of geohash longitude range. If that condition holds it means that the central geohash and it's left and right neighbour cover this longitude range. The central geohash is constructed bit by bit, similarly to how geohash is encoded. When the mentioned condition gets violated, the algorithm terminates and the last bit is removed.
+
+This approach returns 9 geohashes, but it might happen that not all of them even intersect the original rectangle, so those can be omitted. It turns out if the returned geohashes are sorted, then many of the neighbouring elements will differ only by one. This starts to make sense if you take a look at Figure \ref{fig:zcurve} where you can see how the consecutive geohashes are ordered on the map -- very often two consecutive geohashes are neighbours in one of the 8 directions which is also the pattern of the returned geohashes. Instead of returning a list of geohashes, we can return a list of geohash ranges that cover the rectangle. Empirically, this resulting list of ranges usually has two or three elements which is much better than 9 elements in the original list.
+
+\section {Single key solution} \label {single_key}
+All the pieces for a solution with only one sorted set are here. All the points will be stored in one sorted set under a single key, with points being sorted by its 52-bit geohash.
+
+Updating a point is as simple as performing an add function on the set. Add command inserts a new a point to the set if no point with the same id exists yet, otherwise it just updates its geohash.
+
+Rectangle coverage algorithm is used to compute what geohash ranges cover it, lets use $A$ and $B$ as start and end of one such range, respectively. Sorted set is exactly the right tool to find the list of points in this range, however all the geohashes in the set have 52 bits while $A$ and $B$ usually have less. $A$ and $B$ need to be filled up until 52 bits, $A$ with zeros and $B$ with ones. This way all the geohashes that have $A$ or $B$ or any geohash in between as prefix will be returned by the set's find function. 
+
+\section {Prefix sharding} \label {prefix}
 One way to distribute keys is to create more keys then the number of nodes and hope that approximately the same number of keys ends up on each node. Just as geohashing preserves locality, it is useful to try to do the same when designing the sharding scheme. This is achieved by sharding based on geohash prefix. When a point is added to the system, geohash is computed and it is inserted into one of the sorted sets based on its first $P$ bits. Each set is named based on the prefix it represents and all of the points inside that set share the same prefix. $P$ is an adjustable parameter that can be tuned based on the expected data set. Each prefix set is created lazily -- only when a point with such prefix is inserted.
 
 As already said, rectangle query boils down to answering what points are in a geohash range. It is possible that a requested geohash range spans through multiple prefix sets, so a range might be split in multiple ranges such that each of them contains only geohashes with the same prefix. This is an unlikely event if queried rectangles are significantly smaller than the area represented by geohash of precision $P$.
@@ -166,7 +175,7 @@ Downside is that $P$ has to be chosen in advance. If it has to be changed later,
 
 % What about updates?
 
-\chapter {Vehicle id sharding}
+\section {Vehicle id sharding} \label {vehicle_id}
 Another idea is to decide on the number of sorted sets $S$ and define a mapping between vehicle id and a set it belongs to. Each set stores a portion of data, but there is no spatial locality within a single set as was the case with prefix sharding. To get the best performance it is important for sets to be approximately the same size, this is why hash of vehicle id modulo $S$ is used for mapping. The exact hash function used is the same one that Redis uses to map keys to slots.
 
 Updating a point location is simple, use the hash of vehicle id to find the set it maps to and add it to the set. Queries are also simple to answer because the same algorithm that is used on a single set now needs to be applied to each of the $S$ sets. Results are then merged and returned to the client. The downside is that each query needs to do the same operations with all of the $S$ sets which means $S$ times more queries to Redis than with a single key implementation.
