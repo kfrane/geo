@@ -185,9 +185,24 @@ Updating a point location is simple, use the hash of vehicle id to find the set 
 The upside with this approach is that all nodes should have equal load, no matter what the spatial distribution of points or queries look like. Query response time and throughput should be better than a single key implementation, but the results won't be noticeable if queries are small because there is overhead to query each set and merge the results, and some sets might return zero results which only wastes time without any gain.
 
 \chapter {Design and implementation}
-\section {Redis geo features}
-\section {Experimental setup}
-\section {Test data}
+The latest Redis release 3.2.0. includes some geo features. In section \ref{redis_geo} we describe those features and explain how to compare them with solutions presented in this paper. Section \ref{setup} describes how the Redis cluster was setup and how it was used to measure performance of different implementations. Finally, section \ref{test} explains what kind of test data was used for measuring performance.
+
+\section {Redis geo features} \label{redis_geo}
+Redis geo features also have 52-bit geohashes in background, it is very similar to how a single key solution from section \ref{single_key} works. Two most important commands are GEOADD and GEORADIUS, to add a point and to query all points within certain radius. Points are also stored in a ZSET, within a single key. This means they share all the same drawbacks, mainly the lack of scalability.
+
+Redis implementation only supports radius query, while and the implementations in this thesis support only rectangle queries. In order to compare performance between the two implementations we had to add radius querying capabilities to our implementation. To achieve this in the simplest possible way, it is best to reuse the existing rectangle query to answer the radius query. To do this we find the smallest possible rectangle that has the given circle inscribed in it and then filter out the points that are not within the circle. This is essentially the simplest algorithm for circle coverage, definitively not the most efficient one, but good enough to compare with the Redis implementation.
+
+\section {Experimental setup} \label{setup}
+Experimental setup has to components: \emph{Redis Cluster} and \emph{geo client}. Geo client contains all the logic about geo queries and issues as many requests to Redis as possible. It is a single threaded c++ application that uses asynchronous calls to Redis to achieve the best possible performance, even when compared to multithreaded synchronous client \cite{clientperf}.
+
+Redis cluster uses a master slave model. All data is sharded by its key between masters, that is, each master contains a portion of the key space. This mapping is achieved by hashing the keys. Each master node forwards all commands to all of its slaves, and slaves eventually become consistent with its master. This is called \emph{replication} with number of slaves per master called \emph{replication count}. Replication is mainly used to provide high availability to the system, but this is not so important for this application so we chose only 1 replica per master node.
+Redis is an in-memory database, but periodically flushes the data to disk to provide some level of persistency. When the flushing is in progress, Redis doesn't allow no updates to the database which can make performance measurements unpredictable. Also, on of the main reasons why Redis was chosen is because it is an in-memory database, and not its ability to efficiently persist data to disk. For these reasons, every persistency mechanism in Redis was disabled.
+
+Redis Cluster has 6 machines in total, each machine equipped with quad-core processor. Each machine is running 2 masters and 2 slaves which totals to 12 masters and 12 slaves. 
+
+We also used one machine in the same network to run geo clients on. Because of the single-threaded nature of geo clients, we were able to use multiple number of them on the same machine and still increase the load on the Redis cluster.
+
+\section {Test data} \label{test}
 
 \chapter {Results}
 
