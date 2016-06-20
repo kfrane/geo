@@ -274,7 +274,32 @@ Even with those limitations, prefix sharding and vehicle id sharding are able to
 
 
 \chapter{Conclusion}
-Conclusion.
+We have described and implemented few ideas to build realtime system for tracking vehicle locations. In the hearth of the problem is the need for scalability beyond a single machine. Traditional solutions offer efficient and well established implementations but do not scale well. Ideas in this thesis are all based on translating the two dimensional data space to one dimension using geohash. This causes a completely different approach when designing algorithms so we focused only on minimal set of geo queries. Updating point locations and searching for points within a rectangle is the minimal set of queries. We used Redis as an efficient distributed in-memory key-value store, which is designed to shard the keys over a number of master nodes. The simplest solution to store all the points within a single key is described in section \ref{single_key}. However, this prevents scalability, so we found two ways to shard the data manually.
+
+\begin{itemize}
+\item Prefix sharding splits the data into multiple prefix sets. Each prefix set contains points with the same prefix of length $n$ where $n$ is parameter that has to be chosen in advance.
+
+\item Vehicle id sharding shards the data based on the vehicle id which means that each node contains one sorted set, and updates for the same vehicle always end up on the same node.
+\end{itemize}
+
+Running performance tests revealed interesting use cases of each implementation. Prefix sharding performs much better than vehicle id sharding when queried rectangles contain small number of points. The two implementations even out when number of points inside queried rectangles is much higher. When performing those tests it was evident that the load is much more evened out when using vehicle id sharding, especially when the query data set was designed to hit one area much more often than others. The only test were vehicle id sharding was better than prefix sharding is on the big normal dataset but the margin wasn't big enough for it to be a convincing argument. To conclude, prefix sharding is definitively better if rectangle positions are uniformly distributed without the possibility of suddenly one region becoming very hot and therefore limiting the system throughput to only a single Redis node.
+
+We also implemented the radius query on top of the rectangle query to be able to compare with the lastest Redis geo features. Our single key implementation had about 50\% lower throughput which is to be expected because these queries weren't built directly into Redis but on top of it.
+
+\section {Future work}
+There are several different paths for further investigation.
+\begin{itemize}
+\item Test the hypothesis that having more clients on more machines could in total have better request rate than the prefix sharding.
+
+\item There is still a lot more possible queries that traditional R-trees can handle, one of the most popular is finding the K nearest neighbours (knn) from a given location. One idea for such implementation is to search in concentric circles with exponentially increasing radius until at least K points is returned from the system.
+
+\item This thesis hasn't investigated how would creating a higher number of replicas in the cluster effect the performance. Those replicas could be used as readonly nodes to further increase the performance of the search queries, with the downside of having more stale data.
+
+\item Improve Redis by sharding big keys that are otherwise stuck on only one machine. Starting point for sorted sets could be prefix sharding or vehicle id sharding.
+
+\item Investigate if there are more appropriate storage solutions than Redis.
+\end{itemize}
+
 
 \bibliography{literatura}
 \bibliographystyle{fer}
