@@ -212,6 +212,9 @@ Rectangle queries are created to show the differences between the three implemen
 \chapter {Results}
 All queries originate from one machine, possible from multiple clients that try to maximise the utilisation of one client machine by issuing as many queries as possible. Sometimes the bottleneck is the machine itself, and sometimes a single machine within a Redis cluster. In section \ref{rectangle_results} we present and explain the performance of rectangle queries under different implementations and in section \ref{radius_results} we explain how the radius queries compare with the native Redis implementation. The main metric measured is number of queries per second, interchangeably used with requests per second.
 
+\section {Updates}
+All update methods have a throughput between 120000-150000 requests per second. This is to be expected because every update method is essentially the same, geohash is computed and point is added to an appropriate sorted set. The only case were there might be a significant difference is if we tried to fix a problem with the prefix sharding's updating inconsistencies, but even that can be implemented almost as efficiently as the other methods.
+
 \section {Rectangle queries} \label {rectangle_results}
 The first tests ran were on uniform data sets. Small dataset had to retrieve 15 points on average while big data set had 3048 points on average. Out of the points retrieved approximately the third of them are actually within the queried rectangle, but we don't report it because the total points returned by Redis has more significance on performance. 
 
