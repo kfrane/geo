@@ -86,11 +86,13 @@ Even though we have a one dimensional data, we still need to figure out how to s
 \end{itemize} 
 
 \chapter{Background}
+This section introduces the reader with the basic approaches to storing and searching over the geographical datasets. We start by describing the well established traditional solutions used in relational databases in chapter \ref{traditional}, and then in chapter \ref{geohashing} proceed with describing geohashing -- the basic method that enables the use of distributed NoSql databases with geographical data sets. Finally, in chapter \ref{key-value} we describe how key-value stores could be used to implement geographical queries, with the examples using Redis to achieve that.
+
 Historically, relational databases (RDBMs) have been the most popular storage system, and still are today. Geographical data and the need to store and query it has also been present in computer science for a long time. This is why most of the solutions were developed on top of relational RDBMS. The most important indexing data structure in RDBMs are B- and \bplus-trees and they work very well with one dimensional data. Those trees then formed the basis of R- and \rstar-trees which became the standard for spatial queries in RDBMs because this design enabled great interoperability with existing RDBMs.
 
 RDBMs have trouble in keeping up with the massive data growth in recent years mainly because of its scalability issues. This is why there has been a rise of NoSql databases that are designed to scale much better. This of course comes with a cost of supporting only a fraction of features that RDBMs support and often lack the same consistency guarantees. To improve on those basic scalability issues it is necessary to completely move from RDBMs to distributed storage systems even though that means that classical approaches such as \rstar-trees won't work.
 
-\section{Traditional solutions}
+\section{Traditional solutions} \label{traditional}
 Lets make a step back and briefly describe the traditional solutions in RDBMS -- R-tree \cite{rtree} and its improvement \rstar-tree \cite{rstar}.
 
 R-tree is a height-balanced tree similar to a B-tree with every node except root containing between $m$ and $M$ records. $M$ is chosen to store the largest possible number of records before it grows to big to fit inside a single disk page. Every record contains information about minimal bounding box $I$ it is "responsible" for. This means that all the data in its subtree is within this bounding rectangle $I$, but that doesn't mean that some other node doesn't contain any points from this area. Bounding box can be represented as $I = (I_x, I_y)$ where $I_x$ and $I_y$ are intervals $[a, b]$ defining what interval on $x$ and $y$ axes current record contains. Records in non-leaf nodes contain minimal bounding box of its subtree. Leaf nodes contain pointers to actual geometrical objects stored, but minimal bounding box is also computed and stored in them.
@@ -103,7 +105,7 @@ Inserting a new point is similar to search. New record is always inserted in the
 
 Estimating the complexity of inserting and search isn't easy, but the main idea is that the search algorithm on average won't need to retrieve many data points that are not inside the query box.
 
-\section{Geohash}
+\section{Geohash} \label{geohashing}
 Geohashing is a method of transforming two dimensional data into one dimension such that the points that are close in the original space are usually close in the transformed space.
 
 Input to the geohash function is a point on the map and the output is a bit string of arbitrary length -- greater length means greater precision. Construction works by repeatedly splitting the input space in half and output a $0$ if in left half and $1$ otherwise, in each step alternating between splitting vertically or horizontally.
@@ -146,7 +148,7 @@ It is now pretty obvious that two geohashes which have a common prefix $P$ are w
 
 Figure \ref{fig:zcurve} shows all geohashes with precision 4, sorted and plotted with lines drawn between neighbouring elements. It is a mathematical object called z-order curve \cite{zcurve} and it appears at any chosen precision. It is also a good way to visualise how geohasing preserves locality.
 
-\section{Key-value stores}
+\section{Key-value stores} \label{key-value}
 Key-value stores are non relational databases.
 As mentioned before geohashes provide a way to map two dimensional data into one dimension while preserving locality. It was also showed how to cover a rectangle with only few geohash ranges. This means that the system has to be able to retrieve all geohashes from a certain range. If all geohashes are stored in a sorted set, it is possible to find the first element from the range and iterate until the end of the range. As mentioned, rectangle coverage usually covers more area than requested, which means that when each element is returned from the set it has to be checked wether it really is within the rectangle.
 
