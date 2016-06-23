@@ -6,6 +6,7 @@
 
 \usepackage{graphicx}
 \graphicspath{ {images/} }
+\usepackage{listings}
 
 \begin{document}
 
@@ -142,7 +143,7 @@ It is now pretty obvious that two geohashes which have a common prefix $P$ are w
 
 \begin{figure}[h]
 \includegraphics[width=\textwidth]{z_curve}
-\caption{Z-order curve with precision 4 \cite {spatiotemporal}}
+\caption{Z-order curve with precision 4 (\cite {spatiotemporal})}
 \label{fig:zcurve}
 \end{figure}
 
@@ -163,15 +164,69 @@ ZSET orders elements by their score, which is a 64-bit floating point number tha
 Even though all point data is contained within each element of sorted set, some implementations will require an efficient way to lookup a vehicle location by its id. This is achieved using standard get and set methods to get or set a value on specified key. As previously said, Redis Cluster automatically shards data by its key, so this information doesn't have to be manually sharded as with ZSET.
 
 \chapter {Algorithms} \label {algorithms}
-In order to be able to answer a rectangle query it is necessary to have an algorithm that can find geohashes that cover an arbitrary rectangle completely. This is known as a rectangle coverage problem. One goal is to use as few geohashes as possible and the other goal is to "over cover" the smallest possible area. If the second goal didn't exist, the solution would always be to use an empty geohash because it covers every rectangle. On the other side, if we wanted to perfectly cover the rectangle, it might happen that infinite number of geohashes are required.
+In order to be able to answer a rectangle query it is necessary to have an algorithm that can find geohashes that cover an arbitrary rectangle completely. This is known as a \emph{rectangle coverage} problem. One goal is to use as few geohashes as possible and the other goal is to "over cover" the smallest possible area. If the second goal didn't exist, the solution would always be to use an empty geohash because it covers every rectangle. On the other side, if we wanted to perfectly cover the rectangle, it might happen that infinite number of geohashes are required.
 
 To do this with respect to both goals we explain a simple algorithm in the section \ref{rect_cov}.
 Section \ref{single_key} explains how to use the list of ranges that the algorithm produces to make a simple version of the system that stores all the points within a single set. Sections \ref{prefix} and \ref{vehicle_id} present two solutions on how to shard the data into multiple sorted sets to achieve scalability and better performance.
 
 \section {Rectangle coverage} \label {rect_cov}
-The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all 8 neighbouring geohashes and return them with the central geohash. All of those geohashes will have the same precision. All that is left is to find the largest precision that guarantees that the whole rectangle gets covered. The condition in one dimension, e.g. longitude, at certain precision level is that $2*W >= L$ where $W$ is length of longitude side of rectangle and $L$ length of geohash longitude range. If that condition holds it means that the central geohash and it's left and right neighbour cover this longitude range. The central geohash is constructed bit by bit, similarly to how geohash is encoded. When the mentioned condition gets violated, the algorithm terminates and the last bit is removed.
+The first step of the algorithm is to compute the precision of the geohashes that will be used to cover the rectangle. To make the algorithm simpler, all the geohashes that cover the rectangle will be of the \emph{same} precision.
+The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all eight neighbouring geohashes and return them with the central geohash. In the figure \ref{geohash_grid}, the central geohash is marked with the letter C, and the neighbouring geohashes are marked using letters for cardinal directions.
 
-This approach returns 9 geohashes, but it might happen that not all of them even intersect the original rectangle, so those can be omitted. It turns out if the returned geohashes are sorted, then many of the neighbouring elements will differ only by one. This starts to make sense if you take a look at Figure \ref{fig:zcurve} where you can see how the consecutive geohashes are ordered on the map -- very often two consecutive geohashes are neighbours in one of the 8 directions which is also the pattern of the returned geohashes. Instead of returning a list of geohashes, we can return a list of geohash ranges that cover the rectangle. Empirically, this resulting list of ranges usually has two or three elements which is much better than 9 elements in the original list.
+All that is left to do is to find the largest geohash precision that guarantees that the whole rectangle gets covered with those nine geohashes. To analyse the condition on one dimension, e.g. longitude, we will define $W$ as the length of the longitude side of the rectangle and $G$ as the length of the geohash longitude range at the current precision level. The condition that needs to hold at certain precision level is that $2*G >= W$. If that condition holds, it means that the central geohash and it's left and right neighbour definitively cover the longitude range. Take a look at the figure \ref{geohash_condition} to better understand the condition, red line represents the query range and blue line represents the geohash ranges. Middle point $M$ will always be within the range of the central geohash (middle blue line). The edge case is when the left edges have the same value and $M$ is farthest to the left. In this case $G=W/2$ and if $W$ was any larger, the geohash ranges wouldn't cover the query, which gives inequality $G >= W/2$.
+
+The central geohash is constructed bit by bit, similarly to how geohash is encoded. At each step the condition needs to be checked, when it gets violated, the algorithm terminates and the last bit is removed. Take a look at the listing \ref{code:central} for the Python code that shows how the central geohash is calculated.
+
+\label{code:central}
+\begin{lstlisting}[language=Python, caption=Finding central geohash]
+def find_central_geohash(x0, y0, x1, y1):
+  def split_range(lo, hi, p):
+    mid = (lo+hi)/2
+    if p <= mid:
+      return ('0', lo, mid)
+    return ('1', mid, hi)
+
+  x_min, x_max = -180, 180
+  y_min, y_max = -90, 90
+  x = (x0 + x1) / 2
+  y = (y0 + y1) / 2
+  central = ""
+  for length in range(52):
+    if length % 2 == 0:
+      bit, x_min, x_max = split_range(x_min, x_max, x)
+      g = x_max - x_min
+      w = x1 - x0
+    else:
+      bit, y_min, y_max = split_range(y_min, y_max, y)
+      g = y_max - y_min
+      w = y1 - y0
+
+    if 2*g >= w:
+      central += bit
+    else:
+      break
+  return central
+\end{lstlisting}
+
+\begin{figure}[h]
+% trim = left, bottom, right, top
+\includegraphics[width=\textwidth, trim=105 150 25 85, clip]{geohash_grid/Slide1}
+\caption{Rectangle coverage with 4-bit geohashes}
+\label{geohash_grid}
+\end{figure}
+
+\begin{figure}[h]
+% trim = left, bottom, right, top
+\includegraphics[width=\textwidth, trim=0 320 250 0, clip]{geohash_grid/Slide2}
+\caption{Rectangle coverage condition}
+\label{geohash_condition}
+\end{figure}
+
+
+This approach returns nine geohashes, but it might happen that not all of them even intersect the original rectangle, so those can be omitted. It turns out if the returned geohashes are sorted, then many of the neighbouring elements will differ only by one. This starts to make sense if you take a look at Figure \ref{fig:zcurve} where you can see how the consecutive geohashes are ordered on the map -- very often two consecutive geohashes are neighbours in one of the eight directions which is also the pattern of the returned geohashes. Instead of returning a list of geohashes, we can return a list of geohash ranges that cover the rectangle. In our example the returned geohashes are: 0011, 0110, 0111, 1001, 1011, 1100, 1101, 1110, 1111, or written in ranges form 0011--0011, 0110--0111, 1001--1001, 1011--1111.
+Empirically, this resulting list of ranges usually has three or four elements which is much better than nine elements in the original list.
+
+It is also important to understand how much area will the returned geohashes cover. The worst case in one dimension is when $G$ is maximised such that the condition doesn't hold at the next level. This is when $G' < W/2$, where $G'$ is geohash size at the next precision level, i.e. $G' = G/2$. When substituted and simplified we get $G < W$. This means that the worst case is when $G$ gets very close to $W$. Then, the covered length is $3W$ and over covered is $2W$. If this case is used in both dimensions, the covered area is $9W^2$ and the useful part is only $W^2$ which means 9 times more area was covered than the original rectangle size. Note, that this is not really the worst case when analysing the problem in two dimensions because one rectangle side can be 100 times larger than the other side. In this extremely asymmetrical case the algorithm will stop as soon as the geohashes become to small to cover the big side of the rectangle which produces geohashes with side length with the order of magnitude of the biggest side. This means that the covered area will be few hundred times bigger then the rectangle area. The only way to reduce the over covered area is to return more geohashes that approximate the rectangle more precisely.
 
 \section {Single key solution} \label {single_key}
 All the pieces for a solution with only one sorted set are here. All the points will be stored in one sorted set under a single key, with points being sorted by its 52-bit geohash.
