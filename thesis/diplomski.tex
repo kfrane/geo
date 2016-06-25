@@ -72,7 +72,7 @@ Notice that the rectangle query was defined in a general way, it could be applie
 
 Number of vehicles and users in this system is not defined in advance but is expected to be large so the requirement is that the system shouldn't be constrained by only one computer, i.e. must be scalable. Persistency of the data is not important because all of the data is only relevant for a short period of time, which isn't good enough reason to further complicate the system with persistence considerations. Also, if persistence is needed it can be achieved by another system which can be developed independently from this one and will not be studied in this thesis. 
 
-Consistency - eventual - not 100\% sure?
+Consistency has to be mentioned, especially when designing a distributed system. Consistency guarantees often have to be relaxed to achieve better performance. It would be almost impossible to achieve high performance with any consistency requirements, so we won't require any hard requirements on consistency.
 
 \section {Contributions}
 Many companies have obviously had to implement some kind of a distributed system that supports geo queries, but there isn't many publicly available information, in terms of scientific papers or released code. However, the easiest way is to try to somehow fit this data into some key-value store. They have been studied extensively in computer science and there are many implementation of it. There have been several algorithms developed to translate the two dimensional locations into one dimension. In this thesis we will use geohashing, one of the algorithms from that group, to store data points into in-memory key-value store Redis.
@@ -113,6 +113,7 @@ Input to the geohash function is a point on the map and the output is a bit stri
 
 Let's give an example of how to encode a point in Beijing $116^{\circ}23'$ E $39^{\circ}55'$ N. It is easier to work with if converted to more appropriate form $(116.38, 39.92)$. 
 
+\begin{table}[h]
 \begin{center}
 \begin{tabular}{ |c|l|l|l| } 
 	\hline
@@ -136,6 +137,9 @@ Let's give an example of how to encode a point in Beijing $116^{\circ}23'$ E $39
 	\hline
 \end{tabular}
 \end{center}
+\caption{Geohash encoding of Beijing with precision=14}
+\label{table:1}
+\end{table}
 
 The first column shows longitude range that the current geohash represents and the second column shows the same thing for latitude. The process starts by splitting the longitude range in half and since the point has longitude larger than zero, bit 1 is appended. In the next step the same happens for latitude, and then the algorithm continues to alternate between splitting longitude and latitude ranges. The odd indexed bits are result of splitting by longitude, and even indexed bits are result of splitting by latitude. With every added bit of precision one of the range's size splits in half, which means that geohash always represents a rectangle.
 
