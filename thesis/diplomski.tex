@@ -11,13 +11,13 @@
 \begin{document}
 
 % TODO: Navedite broj rada.
-\thesisnumber{000}
+\thesisnumber{1290}
 
 % TODO: Navedite naslov rada.
 \title{System for tracking vehicle locations in real time}
 
 % TODO: Navedite vaše ime i prezime.
-\author{Arthur Dent}
+\author{Frane Kurtović}
 
 \maketitle
 
@@ -25,7 +25,7 @@
 \izvornik
 
 % Dodavanje zahvale ili prazne stranice. Ako ne želite dodati zahvalu, naredbu ostavite radi prazne stranice.
-\zahvala{}
+\zahvala{Zahvala}
 
 \tableofcontents
 
@@ -63,7 +63,7 @@ Updating a location can be referred as \emph{update $(vehicle\_id, longitude, la
 
 The simplest possible query is to find a list of vehicles that are within a given rectangle, and is referred as
 $$rectangle\_query (longitude\_min, longitude\_max, latitude\_min, latitude\_max)$$
-A point with its longitude and latitude is inside a given rectangle iff $longitude\_min <= longitude <= longitude\_max$ and $latitude\_min <= latitude <= latitude\_max$.
+A point with its longitude and latitude is inside a given rectangle iff $longitude\_min \le longitude \le longitude\_max$ and $latitude\_min \le latitude \le latitude\_max$.
 
 Another interesting query is to search for points within certain distance of a given point.  Let's refer to this query as
 $$radius\_query (longitude, latitude, radius)$$
@@ -79,7 +79,7 @@ Many companies have obviously had to implement some kind of a distributed system
 
 Even though we have a one dimensional data, we still need to figure out how to shard that data among multiple nodes and how to do efficient searches over it. The main contributions of this thesis are:
 \begin{itemize}
-\item Rectangle coverage algorithm described in chapter \ref{rect_cov}. It describes how a rectangle area can be covered with reasonable number of geohashes. It is a necessary step towards making rectangle queries over the data indexed by geohash. Similar versions of this algorithm exist in some codebases \cite{davidmoten}, but haven't been described in a formal manner.
+\item Rectangle coverage algorithm described in chapter \ref{rect_cov}. It describes how a rectangle area can be covered with reasonable number of geohashes. It is a necessary step towards making rectangle queries over the data indexed by geohash. Similar versions of this algorithm exist in some codebases \citet{davidmoten}, but haven't been described in a formal manner.
 
 \item Implementation of this system in Redis under a single key which doesn't achieve the goal of scalability. This is however the first step before implementing different sharded versions. A similar implementation exists in Redis 3.2 \cite{redis_geo}.
 
@@ -94,7 +94,7 @@ Historically, relational databases (RDBMs) have been the most popular storage sy
 RDBMs have trouble in keeping up with the massive data growth in recent years mainly because of its scalability issues. This is why there has been a rise of NoSql databases that are designed to scale much better. This of course comes with a cost of supporting only a fraction of features that RDBMs support and often lack the same consistency guarantees. To improve on those basic scalability issues it is necessary to completely move from RDBMs to distributed storage systems even though that means that classical approaches such as \rstar-trees won't work.
 
 \section{Traditional solutions} \label{traditional}
-Lets make a step back and briefly describe the traditional solutions in RDBMS -- R-tree \cite{rtree} and its improvement \rstar-tree \cite{rstar}.
+Lets make a step back and briefly describe the traditional solutions in RDBMS -- R-tree \citet{rtree} and its improvement \rstar-tree \citet{rstar}.
 
 R-tree is a height-balanced tree similar to a B-tree with every node except root containing between $m$ and $M$ records. $M$ is chosen to store the largest possible number of records before it grows to big to fit inside a single disk page. Every record contains information about minimal bounding box $I$ it is "responsible" for. This means that all the data in its subtree is within this bounding rectangle $I$, but that doesn't mean that some other node doesn't contain any points from this area. Bounding box can be represented as $I = (I_x, I_y)$ where $I_x$ and $I_y$ are intervals $[a, b]$ defining what interval on $x$ and $y$ axes current record contains. Records in non-leaf nodes contain minimal bounding box of its subtree. Leaf nodes contain pointers to actual geometrical objects stored, but minimal bounding box is also computed and stored in them.
 
@@ -143,7 +143,7 @@ It is now pretty obvious that two geohashes which have a common prefix $P$ are w
 
 \begin{figure}[h]
 \includegraphics[width=\textwidth]{z_curve}
-\caption{Z-order curve with precision 4 (\cite {spatiotemporal})}
+\caption{Z-order curve with precision 4 (\citet {spatiotemporal})}
 \label{fig:zcurve}
 \end{figure}
 
@@ -173,7 +173,7 @@ Section \ref{single_key} explains how to use the list of ranges that the algorit
 The first step of the algorithm is to compute the precision of the geohashes that will be used to cover the rectangle. To make the algorithm simpler, all the geohashes that cover the rectangle will be of the \emph{same} precision.
 The idea is to find a central geohash -- one that covers the center point of the rectangle, and then find all eight neighbouring geohashes and return them with the central geohash. In the figure \ref{geohash_grid}, the central geohash is marked with the letter C, and the neighbouring geohashes are marked using letters for cardinal directions.
 
-All that is left to do is to find the largest geohash precision that guarantees that the whole rectangle gets covered with those nine geohashes. To analyse the condition on one dimension, e.g. longitude, we will define $W$ as the length of the longitude side of the rectangle and $G$ as the length of the geohash longitude range at the current precision level. The condition that needs to hold at certain precision level is that $2*G >= W$. If that condition holds, it means that the central geohash and it's left and right neighbour definitively cover the longitude range. Take a look at the figure \ref{geohash_condition} to better understand the condition, red line represents the query range and blue line represents the geohash ranges. Middle point $M$ will always be within the range of the central geohash (middle blue line). The edge case is when the left edges have the same value and $M$ is farthest to the left. In this case $G=W/2$ and if $W$ was any larger, the geohash ranges wouldn't cover the query, which gives inequality $G >= W/2$.
+All that is left to do is to find the largest geohash precision that guarantees that the whole rectangle gets covered with those nine geohashes. To analyse the condition on one dimension, e.g. longitude, we will define $W$ as the length of the longitude side of the rectangle and $G$ as the length of the geohash longitude range at the current precision level. The condition that needs to hold at certain precision level is that $2*G \ge W$. If that condition holds, it means that the central geohash and it's left and right neighbour definitively cover the longitude range. Take a look at the figure \ref{geohash_condition} to better understand the condition, red line represents the query range and blue line represents the geohash ranges. Middle point $M$ will always be within the range of the central geohash (middle blue line). The edge case is when the left edges have the same value and $M$ is farthest to the left. In this case $G=W/2$ and if $W$ was any larger, the geohash ranges wouldn't cover the query, which gives inequality $G \ge W/2$.
 
 The central geohash is constructed bit by bit, similarly to how geohash is encoded. At each step the condition needs to be checked, when it gets violated, the algorithm terminates and the last bit is removed. Take a look at the listing \ref{code:central} for the Python code that shows how the central geohash is calculated.
 
@@ -273,7 +273,7 @@ Redis geo features also have 52-bit geohashes in background, it is very similar 
 Redis implementation only supports radius query, while and the implementations in this thesis support only rectangle queries. In order to compare performance between the two implementations we had to add radius querying capabilities to our implementation. To achieve this in the simplest possible way, it is best to reuse the existing rectangle query to answer the radius query. To do this we find the smallest possible rectangle that has the given circle inscribed in it and then filter out the points that are not within the circle. This is essentially the simplest algorithm for circle coverage, definitively not the most efficient one, but good enough to compare with the Redis implementation.
 
 \section {Experimental setup} \label{setup}
-Experimental setup has to components: \emph{Redis Cluster} and \emph{geo client}. Geo client contains all the logic about geo queries and issues as many requests to Redis as possible. It is a single threaded c++ application that uses asynchronous calls to Redis to achieve the best possible performance, even when compared to multithreaded synchronous client \cite{clientperf}.
+Experimental setup has to components: \emph{Redis Cluster} and \emph{geo client}. Geo client contains all the logic about geo queries and issues as many requests to Redis as possible. It is a single threaded c++ application that uses asynchronous calls to Redis to achieve the best possible performance, even when compared to multithreaded synchronous client \citet{clientperf}.
 
 Redis cluster uses a master slave model. All data is sharded by its key between masters, that is, each master contains a portion of the key space. This mapping is achieved by hashing the keys. Each master node forwards all commands to all of its slaves, and slaves eventually become consistent with its master. This is called \emph{replication} with number of slaves per master called \emph{replication count}. Replication is mainly used to provide high availability to the system, but this is not so important for this application so we chose only 1 replica per master node.
 Redis is an in-memory database, but periodically flushes the data to disk to provide some level of persistency. When the flushing is in progress, Redis doesn't allow no updates to the database which can make performance measurements unpredictable. Also, on of the main reasons why Redis was chosen is because it is an in-memory database, and not its ability to efficiently persist data to disk. For these reasons, every persistency mechanism in Redis was disabled.
@@ -283,7 +283,7 @@ Redis Cluster has 6 machines in total, each machine equipped with quad-core proc
 We also used one machine in the same network to run geo clients on. Because of the single-threaded nature of geo clients, we were able to use multiple number of them on the same machine and still increase the load on the Redis cluster.
 
 \section {Test data} \label{test}
-The basis for the dataset used is T-Drive \cite{tdrive1, tdrive2} dataset. It is was recorded by 10000 taxi drivers in Beijing from Feb. 2 to Feb. 8, 2008. There is about 17 million points, but we used only 5 million for testing. Each datapoint consists of taxi id, timestamp, longitude and latitude. There is not enough taxis so we decided to ignore taxi id, and generate a new id to use as vehicle id for each data point. Timestamp is also irrelevant because we are not trying to make a trajectory of taxi movement or anything similar, just insert points without any temporal information. These data points are directly used in update queries.
+The basis for the dataset used is T-Drive \citet{tdrive1, tdrive2} dataset. It is was recorded by 10000 taxi drivers in Beijing from Feb. 2 to Feb. 8, 2008. There is about 17 million points, but we used only 5 million for testing. Each datapoint consists of taxi id, timestamp, longitude and latitude. There is not enough taxis so we decided to ignore taxi id, and generate a new id to use as vehicle id for each data point. Timestamp is also irrelevant because we are not trying to make a trajectory of taxi movement or anything similar, just insert points without any temporal information. These data points are directly used in update queries.
 
 Now, we need to figure out interesting rectangle and radius queries that can reflect the difference between different implementations, mainly prefix and vehicle id sharding. Each implementation might behave different for queries with different rectangle areas -- small or big. Prefix sharding should not scale well when there is one hot region, which is something that can be easily tested by creating queries that hit one area more than others. Generating rectangles whose centre points are generated by normal distribution is a perfect choice for this. Of course, there is also a data set with rectangles whose centres were generated by uniform distribution. All of the generated rectangles are within the area where T-Drive data points are. To sum up, there are four rectangle data sets: small uniform, big uniform, small normal and big normal.
 

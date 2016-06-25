@@ -69,7 +69,7 @@
 \else \if@enccp \RequirePackage[cp1250]{inputenc} \fi
 \fi
 
-\RequirePackage[croatian]{babel}
+\RequirePackage[english]{babel}
 \RequirePackage[T1]{fontenc}
 \RequirePackage{graphicx} % Uključeno jer je često korišteno
 \RequirePackage{amssymb} % Uključeno jer je često korišteno
@@ -92,9 +92,8 @@
 \if@fontlmodern\RequirePackage{lmodern} \fi
 
 % Postavljanje stila citiranja
-\if@citeauthoryear \RequirePackage[authoryear, round]{natbib}
-\else \RequirePackage[numbers, square]{natbib}
-\fi
+\RequirePackage[numbers]{natbib}
+
 
 % Umjesto poziva \RequirePackage[outsidefoot]{pageno}.
 % Neke LaTeX distribucije odbijaju automatski instalirati pageno paket.
@@ -115,7 +114,7 @@
 
 % Promjena naziva poglavlja ``Bibliografija'' -> ``Literatura''
 \addto\captionscroatian{%
-	\def\bibname{Literatura}
+	\def\bibname{Bibliography}
 }
 
 % Podešavanje oznaka kod listi (1. razina je crtica, 2. puni krug) 
@@ -264,16 +263,16 @@
 		\let\footnoterule\relax
 	
 		\begin{center}
-			{\large\sffamily SVEU\v{C}ILI\v{S}TE U ZAGREBU}
+			{\large\sffamily UNIVERSITY OF ZAGREB}
 			
-			{\large\bfseries\sffamily FAKULTET ELEKTROTEHNIKE I RA\v{C}UNARSTVA}
+			{\large\bfseries\sffamily FACULTY OF ELECTRICAL ENGINEERING AND COMPUTING}
 		\end{center}
 		\vfill
 		\begin{center}%
 	    	\if@radzavrsni%
 			  {\large\sffamily ZAVR\v{S}NI RAD br.~\@thesisnumber \par}%
 			\else \if@raddiplomski%
-			  {\large\sffamily DIPLOMSKI RAD br.~\@thesisnumber \par}%
+			  {\large\sffamily MASTER THESIS No.~\@thesisnumber \par}%
 			\else {\large\sffamily\bfseries SEMINAR \par}%
 			\fi\fi
 			\if@radseminar \vskip 3em%
@@ -295,8 +294,8 @@
 		\begin{center}
 			{\sffamily\large Zagreb, 
 			\ifcase\month\or
-				sije\v{c}anj\or velja\v{c}a\or o\v{z}ujak\or travanj\or svibanj\or
-	   	 		lipanj\or srpanj\or kolovoz\or rujan\or listopad\or studeni\or
+				sije\v{c}anj\or velja\v{c}a\or o\v{z}ujak\or April\or May\or
+	   	 		June\or July\or kolovoz\or rujan\or listopad\or studeni\or
 	    			prosinac\fi \space \number\year.%
 	    	}
 		\end{center}
