@@ -114,6 +114,7 @@ Input to the geohash function is a point on the map and the output is a bit stri
 Let's give an example of how to encode a point in Beijing $116^{\circ}23'$ E $39^{\circ}55'$ N. It is easier to work with if converted to more appropriate form $(116.38, 39.92)$. 
 
 \begin{table}[h]
+\caption{Geohash encoding of Beijing with precision=14}
 \begin{center}
 \begin{tabular}{ |c|l|l|l| } 
 	\hline
@@ -137,7 +138,6 @@ Let's give an example of how to encode a point in Beijing $116^{\circ}23'$ E $39
 	\hline
 \end{tabular}
 \end{center}
-\caption{Geohash encoding of Beijing with precision=14}
 \label{table:1}
 \end{table}
 
@@ -412,11 +412,11 @@ Sažetak na hrvatskom jeziku.
 \end{sazetak}
 
 % TODO: Navedite naslov na engleskom jeziku.
-\engtitle{Title}
+\engtitle{System for tracking vehicle locations in real time}
 \begin{abstract}
-Abstract.
+This thesis discusses design and implementation of the backend part of the distributed system for tracking vehicle locations in real time. Data sharding is necessary to distribute the system, which is achieved using geohashing. Redis Cluster is used as a distributed in-memory storage solution, on top of which we developed prefix and vehicle id sharding schemes. To correctly answer rectangle queries, rectangle coverage algorithm was developed, based on the ideas seen in few other codebases. We compare the two sharding schemes, single key solution and the recently developed geo queries in Redis. The latter two are non distributed versions and benchmarks show that distributed versions outperform them easily, but between prefix and vehicle id sharding there is no clear winner because on some test cases one is better and on some the other.
 
-\keywords{Keywords.}
+\keywords{distributed, geohashing, spatial queries}
 \end{abstract}
 
 \end{document}
