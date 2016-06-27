@@ -416,7 +416,7 @@ Sažetak na hrvatskom jeziku.
 \begin{abstract}
 This thesis discusses design and implementation of the backend part of the distributed system for tracking vehicle locations in real time. Data sharding is necessary to distribute the system, which is achieved using geohashing. Redis Cluster is used as a distributed in-memory storage solution, on top of which we developed prefix and vehicle id sharding schemes. To correctly answer rectangle queries, rectangle coverage algorithm was developed, based on the ideas seen in few other codebases. We compare the two sharding schemes, single key solution and the recently developed geo queries in Redis. The latter two are non distributed versions and benchmarks show that distributed versions outperform them easily, but between prefix and vehicle id sharding there is no clear winner because on some test cases one is better and on some the other.
 
-\keywords{distributed, geohashing, spatial queries}
+\keywords{Redis, Distributed, Geohash, Spatial index, Real-time}
 \end{abstract}
 
 \end{document}
