@@ -310,14 +310,16 @@ Usually, we can't tell which key will end up on which Redis node, so we initiall
 Vehicle id sharding creates approximately equal load on all nodes, no matter what the spatial distribution of points or queries looks like. This might not seem like an important feature at first, but production systems often don't have the luxury to assume that some region on Earth won't suddenly become queried a lot more. Query response time and throughput should be better than a single key implementation, but the results won't be noticeable if queries are small because there is overhead to query each set and merge the results, and some sets might return zero results which only wastes resources without any performance gain.
 
 \chapter {Design and implementation}
-All of the algorithms described in the previous chapter are implemented within a C++ application that we call \emph{geo client}. The main part of the application is issuing queries and merging the data returned by Redis. It reads queries from input file, processes them as fast as possible and measures the average throughput. Tests have revealed that better performance is achieved with a single threaded application issuing asynchronous calls to Redis than a multithreaded synchronous client \cite{clientperf}.
+All of the algorithms described in the previous chapter are implemented within a C++ application that we call \emph{geo client}. The main part of the application is issuing queries and merging the data returned by Redis. It reads queries from input file, processes them as fast as possible and measures the average throughput. Tests have revealed that better performance is achieved with a single threaded application issuing asynchronous calls to Redis than a multithreaded synchronous client \cite{clientperf}. This is why geo client is single threaded and uses an async Redis client library.
+
+In addition to the description of query updates in chapter \ref{algorithms}, the implementation also sends one additional SET query to Redis. It creates or updates the location of a single vehicle id. This can be used to look up the latest location for a specific vehicle, but it is not used by any of the other implemented queries.
 
 The latest Redis release 3.2.0. includes some geo features. In section \ref{redis_geo} we describe those features and explain how to compare them with solutions presented in this paper. Section \ref{setup} describes how the Redis cluster was setup and how it was used to measure performance of different implementations. Finally, section \ref{test} explains what kind of test data was used for measuring performance.
 
 \section {Redis geo features} \label{redis_geo}
 Redis geo features also have 52-bit geohashes in background, it is very similar to how a single key solution from section \ref{single_key} works. Two most important commands are GEOADD and GEORADIUS, to add a point and to query all points within certain radius. Points are also stored in a ZSET, within a single key. This means they share all the same drawbacks, mainly the lack of scalability.
 
-Redis implementation only supports radius query, while and the implementations in this thesis support only rectangle queries. In order to compare performance between the two implementations we had to add radius querying capabilities to our implementation. To achieve this in the simplest possible way, it is best to reuse the existing rectangle query to answer the radius query. To do this we find the smallest possible rectangle that has the given circle inscribed in it and then filter out the points that are not within the circle. This is essentially the simplest algorithm for circle coverage, definitively not the most efficient one, but good enough to compare with the Redis implementation.
+Redis implementation only supports radius query, while the implementations in this thesis support only rectangle queries. In order to compare performance between the two implementations we had to add radius querying capabilities to our implementation. To achieve this in the simplest possible way, it is best to reuse the existing rectangle query to answer the radius query. To do this we find the smallest possible rectangle that has the given circle inscribed in it and then filter out the points that are not within the circle. This is essentially the simplest algorithm for circle coverage, definitively not the most efficient one, but good enough to compare with the Redis implementation.
 
 \section {Experimental setup} \label{setup}
 Experimental setup has two components: \emph{Redis Cluster} and \emph{geo client}.
@@ -447,10 +449,11 @@ It would be great if there is an in-memory storage solution that natively suppor
 
 
 % ----------------------------------Summary------------------------------------------------------
+\hrtitle{Sustav za praćenje lokacija vozila u stvarnom vremenu}
 \begin{sazetak}
-Sažetak na hrvatskom jeziku.
+Ovaj diplomski rad razrađuje dizajn i implementaciju backend dijela distribuiranog sustava za praćenje lokacija vozila u stvarnom vremenu. Da bi distribuirali sustav potrebno je koristiti particioniranje podataka što se ostvaruje geohashingom. Redis Cluster je distribuirana baza koja je u potpunosti u memoriji (RAM). Pomoću nje su razvijene dvije metode particioniranja podataka, po geohash prefiksu i po jedinstvenoj oznaci vozila. Iako već postoje implementacije unutar nekih sustava, opisan je i razvijen algoritam prekrivanja pravokutnika koristeći geohasheve. Osim već navedene dvije metode particioniranja, uspoređuju se i metode pomoću jednog ključa te nedavno razvijeni geo upiti u Redisu. Zadnje dvije metode nisu distribuirane te mjerenja pokazuju da ih distribuirane verzije vrlo lako nadmaše. Između prefiksnog i particioniranja po oznaci vozila nije jednoznačno koja metoda je bolja, u nekim slučajevima jedna, u nekim druga.
 
-\kljucnerijeci{Ključne riječi, odvojene zarezima.}
+\kljucnerijeci{Redis, Distribuirano, Geohash, Prostorni indeks, Sustav u stvarnom vremenu}
 \end{sazetak}
 
 % TODO: Navedite naslov na engleskom jeziku.
