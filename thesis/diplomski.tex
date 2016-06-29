@@ -6,7 +6,27 @@
 
 \usepackage{graphicx}
 \graphicspath{ {images/} }
+
+\usepackage{color}
 \usepackage{listings}
+\lstset{ %
+language=Python,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
 
 \begin{document}
 
@@ -45,21 +65,21 @@
 
 % --------------INTRODUCTION-------------------------------------------------------------------------------------------------
 \chapter{Introduction}
-Combining the GPS and mobile technologies it is becoming easier than ever to track the geographical location of a large number of vehicles. Sensors on each vehicle send location updates every few seconds and the users of such system should be able to see which vehicles are currently located in certain area. This thesis will focus on building a \emph{backend part} of this vehicle tracking system. The system has to be able to achieve high throughput of updates and searches, and this must not be limited by the performance capabilities of a single machine. This is why the main design aspect is the ability to \emph{scale on multiple machines}.
+By combining GPS and mobile technologies it is becoming easier than ever to track the geographical location of a large number of vehicles. Sensors on each vehicle send location updates every few seconds and the users of such system should be able to see which vehicles are currently located in certain area. If we take a look at Uber, it is realistic to expect that the users issue similar number of queries per second as there is number of vehicles because the number of users searching for a ride is similar to number of vehicles offering the ride. The most challenging part from computer science perspective is building the \emph{backend} of this vehicle tracking system. This use case creates a lot of requests per user per second which means that one of the main requirements is that the system has to be able to achieve high throughput of updates and queries, and it must not be limited by the performance capabilities of a single machine. This is why the main design aspect is the ability to \emph{scale on multiple machines}.
 
-Before defining an exact version of the problem, it is good to take a look on what are the possible options to choose from. Vehicle location is a multidimensional data point, it can contain up to three dimensions of spatial data and even one dimension of temporal data. Dataset is comprised of many data points and can be either static or live -- in terms of supporting updates of vehicle locations. Of course, data is not worth anything if it can't be queried. Some common queries can be to search for points contained in a given rectangle, or even more general in an arbitrary polygon. Also, a similar query is to find the points contained within certain radius of a given point, but then another question arises -- how is distance defined in this space. A natural assumption is that the points are on planet Earth, but even Earth can be modelled in many ways, as a perfect sphere or as an ellipsoid, each one suitable for a different application in life. If temporal dimension is present then all of these queries can be appended with time interval to return only the points that happened within that time.
+Before defining an exact version of the problem, it is good to take a look on what are the possible options to choose from. Vehicle location is a multidimensional data point, it can contain up to three dimensions of spatial data and even one dimension of temporal data. Dataset is comprised of many data points and can be either static or dynamic -- in terms of supporting updates of vehicle locations. Of course, data is not worth anything if it can't be queried. Some common queries can be to search for points contained in a given rectangle, or even more general in an arbitrary polygon. Also, a similar query is to find the points contained within certain radius of a given point, but then another question arises -- how is distance defined in this space. A natural assumption is that the points are on planet Earth, but even Earth can be modelled in many ways, as a perfect sphere or as an ellipsoid, each one suitable for a different application in life. If temporal dimension is present, then all of these queries can be appended with time interval to return only the points that happened within that time, e.g. find all the pictures taken on Times Square few minutes before and after New Year's eve. When tracking vehicles, we only care about the latest vehicle location, so our system won't need to store the temporal dimension.
 
 % Another possibility is to add information about road positions and then try to match each vehicle to the closest point on the road. This means that a polygon query could be done in 
 
 \section{Motivation}
-Spatial and spatio-temporal data sets are growing rapidly. Consider these spatio-temporal data sets: Facebook or Foursquare with their check-ins, or photos on Instagram. These are all live datasets because queries and updates happen concurrently. There are also examples of static data sets such as data collected by Telecom providers -- a data point for each time a user's phone contacted the tower. This dataset is not live and could be used to perform analytics, usually in a MapReduce system, which has much different requirements on the design of the system.
+Spatial and spatio-temporal data sets are growing rapidly. Consider these spatio-temporal data sets: Facebook or Foursquare with their check-ins, or photos on Instagram. These are all dynamic datasets because queries and updates happen concurrently. There are also examples of static data sets such as data collected by Telecom providers -- a data point for each time a user's phone contacted the tower. This dataset is not dynamic and could be used to perform analytics. Due to the size of the dataset, massively distributed systems (e.g. MapReduce) are often used to perform the analysis, which creates very different requirements on the design of the system.
 
 Initial inspiration for the problem is Uber and similar applications. They have a large number of vehicles that update their location every few seconds. Each user's phone shows vehicles that are in a relatively small area of the map which gives a pretty clear picture of what the most relevant queries could be. Note that this is not a spatio-temporal dataset because only the last location of a vehicle is important, although one could easily imagine the version where the history of locations is stored and queried.
 
 \section{Problem definition and constraints}
 Let us define the problem more precisely. Each vehicle has a unique vehicle id and location. Location is encoded in a standard geographic coordinate system, as longitude and latitude pairs. Longitude is in [-180, 180] range and latitude [-90, 90].
 
-Updating a location can be referred as \emph{update $(vehicle\_id, longitude, latitude$)}.
+Updating a location can be referred as \emph{update $(vehicle\_id, longitude, latitude$)}. There is no special function for inserting a new vehicle, just a new vehicle id needs to be specified and that's all. Removing a vehicle is not explicitly supported, but updating it to a a location unused otherwise such as the North Pole can be used as a workaround.
 
 The simplest possible query is to find a list of vehicles that are within a given rectangle, and is referred as
 $$rectangle\_query (longitude\_min, longitude\_max, latitude\_min, latitude\_max)$$
@@ -77,7 +97,7 @@ Consistency has to be mentioned, especially when designing a distributed system.
 \section {Contributions}
 Many companies have obviously had to implement some kind of a distributed system that supports geo queries, but there isn't many publicly available information, in terms of scientific papers or released code. However, the easiest way is to try to somehow fit this data into some key-value store. They have been studied extensively in computer science and there are many implementation of it. There have been several algorithms developed to translate the two dimensional locations into one dimension. In this thesis we will use geohashing, one of the algorithms from that group, to store data points into in-memory key-value store Redis.
 
-Even though we have a one dimensional data, we still need to figure out how to shard that data among multiple nodes and how to do efficient searches over it. The main contributions of this thesis are:
+Even though we have a one dimensional data, we still need to figure out how to shard that data among multiple nodes and how to do efficient queries over it. The main contributions of this thesis are:
 \begin{itemize}
 \item Rectangle coverage algorithm described in chapter \ref{rect_cov}. It describes how a rectangle area can be covered with reasonable number of geohashes. It is a necessary step towards making rectangle queries over the data indexed by geohash. Similar versions of this algorithm exist in some codebases \citet{davidmoten}, but haven't been described in a formal manner.
 
@@ -100,14 +120,14 @@ R-tree is a height-balanced tree similar to a B-tree with every node except root
 
 The most basic search query is to search for points within a given rectangle $R$. Search starts from the root node and recursively traverses the tree but only to nodes whose bounding box $B$ intersects with $R$. If $R$ completely contains $B$ than whole subtree should be returned, otherwise search continues in all of the children nodes.
 
-Inserting a new point is similar to search. New record is always inserted in the leaf node. If a node gets too big it has to be split and splits propagate up the tree. There are many heuristics on how to choose the appropriate leaf node to insert a new record. R-tree, at each level, always chooses the node which needs the least enlargement to fit a new point. Splitting a node also employs heuristics because there are $2^M-1$ combinations to split it.
+Inserting a new point is similar to search. New record is always inserted in the leaf node. If a node gets too big, it has to be split and splits propagate up the tree. There are many heuristics on how to choose the appropriate leaf node to insert a new record. R-tree, at each level, always chooses the node which needs the least enlargement to fit a new point. Splitting a node also employs heuristics because there are $2^M-1$ combinations to split it.
 
 \rstar-tree improves on the R-tree by introducing better heuristics to split a node and to find the best node when inserting a new point.
 
-Estimating the complexity of inserting and search isn't easy, but the main idea is that the search algorithm on average won't need to retrieve many data points that are not inside the query box.
+Estimating the complexity of inserting and search isn't easy, but the main idea is that the search algorithm on average won't need to retrieve many data points that are not inside the query box. 
 
 \section{Geohash} \label{geohashing}
-Geohashing is a method of transforming two dimensional data into one dimension such that the points that are close in the original space are usually close in the transformed space.
+Geohashes were first introduced into public domain by Gustavo Niemeyer in 2008 \cite{spatiotemporal} to encode geographical locations into a human readable Base32 string. We will use it as a bit string because it is more appropriate for computations. However, geohashing also preservers \emph{locality} -- points that are close in the original space are usually close in the transformed space. This makes it appropriate to use as a method of transforming two dimensional data into one dimension.
 
 Input to the geohash function is a point on the map and the output is a bit string of arbitrary length -- greater length means greater precision. Construction works by repeatedly splitting the input space in half and output a $0$ if in left half and $1$ otherwise, in each step alternating between splitting vertically or horizontally.
 
@@ -161,7 +181,26 @@ This is where distributed key-value stores come to play. The criteria is that th
 
 In few other relevant papers where they built spatial \cite{spatialindex} and spatio-temporal \cite{spatiotemporal} distributed indexes, they used HBase and Accumulo both based on Google's BigTable implementation. We didn't go with that choice because those are not in-memory databases.
 
-We chose \emph{Redis} which is an in-memory key-value store with support for many different data types, and one of them is an ordered set called \emph{ZSET}. Originally Redis wasn't a distributed database, but in the past few years Redis Cluster was developed. Redis Cluster shards the data based on its key, but it can not shard within a single key which is needed because we would like to store all the geohashes inside a single key of type ZSET. This means that we will have to handle this part manually, by creating multiple ZSET keys and querying the appropriate ones.
+We chose \emph{Redis} which is an in-memory key-value store with support for many different data types, and one of them is an ordered set called \emph{ZSET}. Each ZSET instance is stored within a key, that we can think about as if it is a name of a variable when writing programs. Originally Redis wasn't a distributed database, but in the past few years Redis Cluster was developed. Redis Cluster shards the data based on its key, which means that every Redis node stores a portion of keys. This means that it can not shard within a single key, no matter how much data is stored inside it. It is a problem because we would like to store all the geohashes inside a single key of type ZSET and do all the queries on that key. Unfortunately, this means that we will have to handle this part manually, by creating multiple ZSET keys and querying the appropriate ones.
+
+The most important Redis commands ZADD and ZRANGEBYSCORE are shown in Listing \ref{zset}. The first line adds elements m1, m2, m3 with scores 10, 20 and 15, respectively, to zset z1. The second line adds element m1 with score 11 to zset z2, and the third line just updates its score. ZADD returns the number of newly inserted elements. Finally, the last line queries the zset under z1 key for all the elements with scores between 10 and 15, inclusive. As you can see z1 and z2 are completely separate sets that can have the same elements with different scores in them.
+
+\label{zset}
+\begin{figure}[h]
+\begin{lstlisting}[language=Python, caption=ZSET example, numbers=none, numberstyle=\footnotesize, stepnumber=1]
+> ZADD z1 10 m1 20 m2 15 m3
+(integer) 3
+> ZADD z2 11 m1
+(integer) 1
+> ZADD z2 99 m1
+(integer) 0
+> ZRANGEBYSCORE z1 10 15
+1) "m1"
+2) "m3"
+\end{lstlisting}
+\end{figure}
+
+Inserting into ZSET of size $n$ has a complexity $O(log\ n)$ and querying for elements in range that returns $k$ results is $O(k+log\ n)$.
 
 ZSET orders elements by their score, which is a 64-bit floating point number that can store integer values without the loss of precision only if value is in range $[-2^{53}, 2^{53}]$. This score will be used to store geohash values with \emph{52 bit precision}. Those 52 bits are more than enough -- latitude resolution with 26 bits is $180^{\circ}/2^{26} \approx 2.6^{\circ}*10^{-6}$, or about 10 cm. Along with score, each element can store a string value called \emph{member}. It will be used to store a vehicle id.
 
@@ -182,6 +221,7 @@ All that is left to do is to find the largest geohash precision that guarantees 
 The central geohash is constructed bit by bit, similarly to how geohash is encoded. At each step the condition needs to be checked, when it gets violated, the algorithm terminates and the last bit is removed. Take a look at the listing \ref{code:central} for the Python code that shows how the central geohash is calculated.
 
 \label{code:central}
+\begin{figure}[h]
 \begin{lstlisting}[language=Python, caption=Finding central geohash]
 def find_central_geohash(x0, y0, x1, y1):
   def split_range(lo, hi, p):
@@ -211,6 +251,7 @@ def find_central_geohash(x0, y0, x1, y1):
       break
   return central
 \end{lstlisting}
+\end{figure}
 
 \begin{figure}[h]
 % trim = left, bottom, right, top
