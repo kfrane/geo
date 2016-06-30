@@ -34,7 +34,7 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 \thesisnumber{1290}
 
 % TODO: Navedite naslov rada.
-\title{System for tracking vehicle locations in real time}
+\title{Real-Time Vehicle Tracking Information System}
 
 % TODO: Navedite vaše ime i prezime.
 \author{Frane Kurtović}
@@ -47,7 +47,7 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 % Dodavanje zahvale ili prazne stranice. Ako ne želite dodati zahvalu, naredbu ostavite radi prazne stranice.
 \zahvala{
 
-I would first like to thank my thesis advisor dr.sc. Ante Đerek of the Faculty of Electrical Engineering and Computing at University of Zagreb. He was always available for consultation and allowed this paper to be my own work, but steered me in the right the direction whenever I needed it. \\
+I would first like to thank my thesis advisor Doc. dr. sc. Ante Đerek of the Faculty of Electrical Engineering and Computing at University of Zagreb. He was always available for consultation and allowed this paper to be my own work, but steered me in the right the direction whenever I needed it. \\
 
 I would also like to acknowledge my friends Anton Grbin and Filip Pavetić for giving me fresh ideas that proved invaluable for writing this thesis. \\
 
@@ -460,7 +460,7 @@ It would be great if there is an in-memory storage solution that natively suppor
 
 
 % ----------------------------------Summary------------------------------------------------------
-\hrtitle{Sustav za praćenje lokacija vozila u stvarnom vremenu}
+\hrtitle{Sustav za praćenje kretanja vozila u stvarnom vremenu}
 \begin{sazetak}
 Ovaj diplomski rad razrađuje dizajn i implementaciju backend dijela distribuiranog sustava za praćenje lokacija vozila u stvarnom vremenu. Da bi distribuirali sustav potrebno je koristiti particioniranje podataka što se ostvaruje geohashingom. Redis Cluster je distribuirana baza koja je u potpunosti u memoriji (RAM). Pomoću nje su razvijene dvije metode particioniranja podataka, po geohash prefiksu i po jedinstvenoj oznaci vozila. Iako već postoje implementacije unutar nekih sustava, opisan je i razvijen algoritam prekrivanja pravokutnika koristeći geohasheve. Osim već navedene dvije metode particioniranja, uspoređuju se i metode pomoću jednog ključa te nedavno razvijeni geo upiti u Redisu. Zadnje dvije metode nisu distribuirane te mjerenja pokazuju da ih distribuirane verzije vrlo lako nadmaše. Između prefiksnog i particioniranja po oznaci vozila nije jednoznačno koja metoda je bolja, u nekim slučajevima jedna, u nekim druga.
 
@@ -468,7 +468,7 @@ Ovaj diplomski rad razrađuje dizajn i implementaciju backend dijela distribuira
 \end{sazetak}
 
 % TODO: Navedite naslov na engleskom jeziku.
-\engtitle{System for tracking vehicle locations in real time}
+\engtitle{Real-Time Vehicle Tracking Information System}
 \begin{abstract}
 This thesis discusses design and implementation of the backend part of the distributed system for tracking vehicle locations in real time. Data sharding is necessary to distribute the system, which is achieved using geohashing. Redis Cluster is used as a distributed in-memory storage solution, on top of which we developed prefix and vehicle id sharding schemes. To correctly answer rectangle queries, rectangle coverage algorithm was developed, based on the ideas seen in few other codebases. We compare the two sharding schemes, single key solution and the recently developed geo queries in Redis. The latter two are non distributed versions and benchmarks show that distributed versions outperform them easily, but between prefix and vehicle id sharding there is no clear winner because on some test cases one is better and on some the other.
 
